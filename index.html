@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketplace C2C</title>
+    
+    <!-- 1. Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Supabase.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- 3. Font (Inter) -->
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    
+    <!-- 4. Ikon (Heroicons) -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/heroicons@2.1.1/24/outline/index.js"></script>
+
+    <style>
+        /* Base styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Warna latar belakang premium yang sedikit lebih gelap */
+            background-color: #f1f5f9; /* Tailwind 'slate-100' */
+        }
+
+        /* Sembunyikan semua halaman secara default */
+        .page {
+            display: none;
+            opacity: 0;
+        }
+
+        /* Animasi fade-in-up untuk halaman aktif */
+        @keyframes pageFadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .page.active {
+            display: block;
+            opacity: 1;
+            animation: pageFadeInUp 0.4s ease-out;
+        }
+
+        /* Animasi loading spinner */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            /* Warna premium (indigo) */
+            border-top-color: #4f46e5; /* Tailwind 'indigo-600' */
+            animation: spin 1s linear infinite;
+        }
+
+        /* Animasi "float" untuk hero image */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .hero-image-animation {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        /* Menyembunyikan elemen berdasarkan status autentikasi */
+        .auth-only { display: none; }
+        .public-only { display: block; }
+
+        /* Tampilkan elemen yang sesuai saat user login */
+        body.logged-in .auth-only { display: block; }
+        body.logged-in .public-only { display: none; }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e2e8f0; /* slate-200 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8; /* slate-400 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+        
+        /* Chat bubble styles */
+        .chat-bubble {
+            max-width: 70%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            word-wrap: break-word;
+        }
+        .chat-bubble-sender {
+            background-color: #4f46e5; /* indigo-600 */
+            color: white;
+            border-bottom-right-radius: 0.25rem;
+            align-self: flex-end;
+        }
+        .chat-bubble-receiver {
+            background-color: #e2e8f0; /* slate-200 */
+            color: #1e293b; /* slate-800 */
+            border-bottom-left-radius: 0.25rem;
+            align-self: flex-start;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200">
+
+    <!-- Global Loading Spinner -->
+    <div id="global-loader" class="fixed inset-0 z-50 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm" style="display: none;">
+        <div class="spinner h-12 w-12 rounded-full border-4 border-slate-200"></div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="fixed top-5 right-5 z-50 rounded-lg bg-indigo-600 px-4 py-3 text-white shadow-lg" style="display: none; opacity: 0; transition: opacity 0.5s;">
+        <span id="toast-message"></span>
+    </div>
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+        <nav class="container mx-auto flex max-w-7xl items-center justify-between p-4">
+            <!-- Logo -->
+            <a href="#" class="nav-link text-2xl font-bold text-indigo-600 dark:text-indigo-500" data-page="landing-page">
+                <span>🛒 Marketplace</span>
+            </a>
+
+            <!-- Navigasi -->
+            <div class="flex items-center space-x-2 md:space-x-4">
+                <a href="#" class="nav-link rounded-md px-2 py-2 text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-500" data-page="home-page">
+                    <span class="hidden sm:inline">Home</span>
+                    <img src="https://api.iconify.design/heroicons/home-20-solid.svg?color=currentColor" class="inline h-6 w-6 sm:hidden" />
+                </a>
+                
+                <!-- Hanya untuk user login -->
+                <a href="#" class="nav-link auth-only rounded-md px-2 py-2 text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-500" data-page="chat-list-page">
+                    <span class="hidden sm:inline">Inbox</span>
+                    <img src="https://api.iconify.design/heroicons/chat-bubble-left-right-20-solid.svg?color=currentColor" class="inline h-6 w-6 sm:hidden" />
+                </a>
+                <a href="#" class="nav-link auth-only rounded-md px-2 py-2 text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-500" data-page="dashboard-page" data-tab="my-products">
+                    <span class="hidden sm:inline">Produk Saya</span>
+                    <img src="https://api.iconify.design/heroicons/archive-box-20-solid.svg?color=currentColor" class="inline h-6 w-6 sm:hidden" />
+                </a>
+                <a href="#" class="nav-link auth-only rounded-md px-2 py-2 text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-500" data-page="dashboard-page" data-tab="favorites">
+                    <span class="hidden sm:inline">Favorit</span>
+                    <img src="https://api.iconify.design/heroicons/heart-20-solid.svg?color=currentColor" class="inline h-6 w-6 sm:hidden" />
+                </a>
+                <a href="#" class="nav-link auth-only rounded-full p-1 text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-500" data-page="dashboard-page" data-tab="profile">
+                    <span id="nav-avatar-container" class="flex items-center">
+                        <img id="nav-avatar" src="https://placehold.co/40x40/cbd5e1/475569?text=U" class="h-8 w-8 rounded-full bg-slate-200 object-cover ring-2 ring-offset-2 ring-transparent">
+                    </span>
+                </a>
+
+                <!-- Hanya untuk publik (belum login) -->
+                <a href="#" class="nav-link public-only rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" data-page="auth-page">Login</a>
+                <a href="#" class="nav-link public-only rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700" data-page="auth-page">Sign Up</a>
+
+                <!-- Tombol Logout -->
+                <button id="logout-button" class="auth-only rounded-md bg-red-500 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-600">
+                    Logout
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Konten Utama Aplikasi -->
+    <main class="container mx-auto max-w-7xl p-4">
+
+        <!-- ===== 1. LANDING PAGE ===== -->
+        <section id="landing-page" class="page active">
+            <div class="relative overflow-hidden rounded-lg bg-gradient-to-br from-white to-slate-100 p-8 shadow-lg dark:from-slate-800 dark:to-slate-900 md:p-12">
+                <div class="grid grid-cols-1 items-center gap-8 md:grid-cols-2">
+                    <!-- Teks -->
+                    <div class="z-10">
+                        <h1 class="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-5xl">
+                            Jual Beli Mudah,
+                            <span class="text-indigo-600 dark:text-indigo-500">Langsung Antar Pengguna.</span>
+                        </h1>
+                        <p class="mt-6 text-lg text-slate-600 dark:text-slate-300">
+                            Temukan barang unik atau jual barang Anda sendiri di marketplace C2C kami. Mudah, cepat, dan aman.
+                        </p>
+                        <div class="mt-8 flex space-x-4">
+                            <a href="#" class="nav-link rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white shadow-lg transition hover:-translate-y-1 hover:bg-indigo-700" data-page="home-page">
+                                Jelajahi Produk &rarr;
+                            </a>
+                            <a href="#" class="nav-link rounded-lg bg-white px-6 py-3 text-lg font-semibold text-slate-800 shadow-lg transition hover:-translate-y-1 hover:bg-slate-50 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600" data-page="auth-page">
+                                Mulai Jual
+                            </a>
+                        </div>
+                    </div>
+                    <!-- Gambar -->
+                    <div class="relative flex h-full min-h-[250px] items-center justify-center">
+                        <!-- Animasi unik: SVG 'float' -->
+                        <img src="https://placehold.co/400x400/4f46e5/ffffff?text=Produk+Anda" alt="Marketplace illustration" class="hero-image-animation z-10 w-full max-w-sm rounded-lg shadow-2xl">
+                        <!-- Elemen dekoratif blur -->
+                        <div class="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-indigo-300 opacity-50 blur-3xl dark:bg-indigo-800"></div>
+                        <div class="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-purple-300 opacity-50 blur-3xl dark:bg-purple-800"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 2. AUTH PAGE (LOGIN / REGISTER) ===== -->
+        <section id="auth-page" class="page">
+            <div class="mx-auto max-w-md">
+                <div class="rounded-lg bg-white p-8 shadow-lg dark:bg-slate-800">
+                    <!-- Tab Buttons -->
+                    <div class="mb-6 flex border-b border-slate-200 dark:border-slate-700">
+                        <button id="auth-tab-login" class="flex-1 border-b-2 border-indigo-600 py-2 font-medium text-indigo-600 dark:border-indigo-500 dark:text-indigo-500">Login</button>
+                        <button id="auth-tab-signup" class="flex-1 py-2 font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white">Sign Up</button>
+                    </div>
+
+                    <!-- Login Form -->
+                    <form id="login-form" class="space-y-4">
+                        <div>
+                            <label for="login-email" class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
+                            <input type="email" id="login-email" required class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700">
+                        </div>
+                        <div>
+                            <label for="login-password" class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
+                            <input type="password" id="login-password" required class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700">
+                        </div>
+                        <button type="submit" class="w-full rounded-md bg-indigo-600 py-2.5 text-white shadow-sm hover:bg-indigo-700">Login</button>
+                    </form>
+
+                    <!-- Sign Up Form (hidden by default) -->
+                    <form id="signup-form" class="hidden space-y-4">
+                        <div>
+                            <label for="signup-email" class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
+                            <input type="email" id="signup-email" required class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700">
+                        </div>
+                        <div>
+                            <label for="signup-password" class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
+                            <input type="password" id="signup-password" required class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700">
+                        </div>
+                        <button type="submit" class="w-full rounded-md bg-indigo-600 py-2.5 text-white shadow-sm hover:bg-indigo-700">Sign Up</button>
+                    </form>
+
+                    <!-- Separator -->
+                    <div class="my-6 flex items-center">
+                        <div class="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
+                        <span class="mx-4 flex-shrink text-sm text-slate-500 dark:text-slate-400">Atau</span>
+                        <div class="flex-grow border-t border-slate-300 dark:border-slate-600"></div>
+                    </div>
+
+                    <!-- Google OAuth -->
+                    <button id="google-login-button" class="flex w-full items-center justify-center rounded-md border border-slate-300 bg-white py-2.5 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600">
+                        <img src="https://api.iconify.design/logos/google-icon.svg" class="h-5 w-5" alt="Google icon">
+                        <span class="ml-3 text-sm font-medium text-slate-700 dark:text-slate-200">Login dengan Google</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 3. HOME / MARKETPLACE PAGE ===== -->
+        <section id="home-page" class="page">
+            <!-- Search & Filter Bar -->
+            <div class="mb-6 rounded-lg bg-white p-4 shadow-lg dark:bg-slate-800">
+                <div class="flex flex-col gap-4 md:flex-row">
+                    <div class="relative flex-grow">
+                        <input type="search" id="search-bar" placeholder="Cari produk..." class="w-full rounded-md border-slate-300 py-2 pl-10 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700">
+                        <img src="https://api.iconify.design/heroicons/magnifying-glass-20-solid.svg?color=currentColor" class="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    </div>
+                    <select id="category-filter" class="rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 md:w-1/3">
+                        <option value="">Semua Kategori</option>
+                        <option value="Elektronik">Elektronik</option>
+                        <option value="Fashion">Fashion</option>
+                        <option value="Furnitur">Furnitur</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Product Grid -->
+            <h2 class="mb-4 text-2xl font-bold">Semua Produk</h2>
+            <div id="product-grid" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                <!-- Product cards akan di-render oleh JS di sini -->
+                <p id="product-grid-placeholder" class="col-span-full text-center text-slate-500">Memuat produk...</p>
+            </div>
+        </section>
+
+        <!-- ===== 4. PRODUCT DETAIL PAGE ===== -->
+        <section id="detail-page" class="page">
+            <button class="nav-link mb-4 rounded-md bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-md hover:bg-slate-50 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600" data-page="home-page">
+                &larr; Kembali
+            </button>
+            <div id="product-detail-content" class="grid grid-cols-1 gap-8 rounded-lg bg-white p-8 shadow-lg dark:bg-slate-800 md:grid-cols-2">
+                <!-- Konten detail akan di-render oleh JS di sini -->
+                <p class="col-span-full text-center text-slate-500">Memuat detail produk...</p>
+            </div>
+        </section>
+
+        <!-- ===== 5. USER DASHBOARD PAGE ===== -->
+        <section id="dashboard-page" class="page">
+            <div class="rounded-lg bg-white shadow-lg dark:bg-slate-800">
+                <!-- Dashboard Tabs -->
+                <div class="border-b border-slate-200 dark:border-slate-700">
+                    <nav class="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+                        <button class="dashboard-tab whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium" data-tab="profile">
+                            Profil Saya
+                        </button>
+                        <button class="dashboard-tab whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium" data-tab="my-products">
+                            Produk Saya
+                        </button>
+                        <button class="dashboard-tab whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium" data-tab="favorites">
+                            Favorit Saya
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="p-6">
+                    <!-- 5a. Profile Edit Tab -->
+                    <div id="tab-profile" class="dashboard-tab-content space-y-4">
+                        <h3 class="text-xl font-semibold">Edit Profil</h3>
+                        <form id="profile-form" class="space-y-4">
+                            <div class="flex items-center space-x-4">
+                                <img id="profile-avatar-preview" src="https://placehold.co/100x100/cbd5e1/475569?text=U" class="h-24 w-24 rounded-full bg-slate-200 object-cover shadow-sm">
+                                <div>
+                                    <label for="profile-avatar-upload" class="cursor-pointer rounded-md bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600">
+                                        Ubah Foto
+                                    </label>
+                                    <input type="file" id="profile-avatar-upload" class="sr-only">
+                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">PNG atau JPG (Maks 1MB).</p>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="profile-name" class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Nama</label>
+                                <input type="text" id="profile-name" class="w-full max-w-sm rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700">
+                            </div>
+                            <div>
+                                <label for="profile-bio" class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Bio Singkat</label>
+                                <textarea id="profile-bio" rows="3" class="w-full max-w-sm rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700" placeholder="Ceritakan sedikit tentang diri Anda..."></textarea>
+                            </div>
+                            <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700">
+                                Simpan Perubahan
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- 5b. My Products Tab -->
+                    <div id="tab-my-products" class="dashboard-tab-content hidden">
+                        <div class="mb-4 flex items-center justify-between">
+                            <h3 class="text-xl font-semibold">Produk Saya</h3>
+                            <button id="add-new-product-btn" class="nav-link rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700" data-page="product-form-page">
+                                + Tambah Produk
+                            </button>
+                        </div>
+                        <div id="my-products-grid" class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+                            <!-- Produk milik user akan di-render di sini -->
+                            <p id="my-products-placeholder" class="col-span-full text-center text-slate-500">Anda belum memiliki produk.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 5c. My Favorites Tab -->
+                    <div id="tab-favorites" class="dashboard-tab-content hidden">
+                        <h3 class="text-xl font-semibold">Produk Favorit Saya</h3>
+                        <div id="favorites-grid" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+                            <!-- Produk favorit akan di-render di sini -->
+                            <p id="favorites-placeholder" class="col-span-full text-center text-slate-500">Anda belum memiliki favorit.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 6. ADD/EDIT PRODUCT PAGE ===== -->
+        <section id="product-form-page" class="page">
+            <button class="nav-link mb-4 rounded-md bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-md hover:bg-slate-50 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600" data-page="dashboard-page" data-tab="my-products">
+                &larr; Kembali ke Produk Saya
+            </button>
+            <div class="rounded-lg bg-white p-8 shadow-lg dark:bg-slate-800">
+                <h2 id="product-form-title" class="mb-6 text-2xl font-bold">Tambah Produk Baru</h2>
+                <form id="product-form" class="space-y-4">
+                    <input type="hidden" id="product-id-input">
+                    <div>
+                        <label for="product-name" class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Nama Produk</label>
+                        <input type="text" id="product-name" required class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700">
+                    </div>
+                    <div>
+                        <label for="product-description" class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Deskripsi</label>
+                        <textarea id="product-description" rows="4" required class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700"></textarea>
+                    </div>
+                    <div class_ ="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                            <label for="product-price" class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Harga (IDR)</label>
+                            <input type="number" id="product-price" required class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700" min="0" step="1000">
+                        </div>
+                        <div>
+                            <label for="product-category" class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Kategori</label>
+                            <select id="product-category" required class="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700">
+                                <option value="Elektronik">Elektronik</option>
+                                <option value="Fashion">Fashion</option>
+                                <option value="Furnitur">Furnitur</option>
+                                <option value="Lainnya">Lainnya</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Gambar Produk</label>
+                        <input type="file" id="product-image-upload" class="w-full text-sm text-slate-500
+                            file:mr-4 file:rounded-full file:border-0
+                            file:bg-indigo-50 file:px-4 file:py-2
+                            file:text-sm file:font-semibold file:text-indigo-700
+                            hover:file:bg-indigo-100 dark:file:bg-indigo-900/50 dark:file:text-indigo-300 dark:hover:file:bg-indigo-900
+                        ">
+                        <img id="product-image-preview" src="" alt="Preview Gambar" class="mt-2 h-40 w-40 rounded-lg bg-slate-100 object-cover shadow-sm dark:bg-slate-700" style="display: none;">
+                    </div>
+                    <div class="flex justify-between pt-4">
+                        <button type="button" id="delete-product-button" class="rounded-md bg-red-600 px-4 py-2 text-white shadow-sm hover:bg-red-700" style="display: none;">
+                            Hapus Produk
+                        </button>
+                        <button type="submit" id="save-product-button" class="rounded-md bg-indigo-600 px-6 py-2 text-white shadow-sm hover:bg-indigo-700">
+                            Simpan Produk
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+        
+        <!-- ===== 7. CHAT LIST PAGE (BARU) ===== -->
+        <section id="chat-list-page" class="page">
+            <div class="rounded-lg bg-white p-6 shadow-lg dark:bg-slate-800">
+                <h2 class="mb-4 text-2xl font-bold">Inbox Pesan</h2>
+                <div id="chat-list-container" class="space-y-3">
+                    <!-- Daftar chat akan di-render oleh JS di sini -->
+                    <p id="chat-list-placeholder" class="text-center text-slate-500">Memuat percakapan...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 8. CHAT DETAIL PAGE (BARU) ===== -->
+        <section id="chat-detail-page" class="page">
+            <div class="rounded-lg bg-white shadow-lg dark:bg-slate-800">
+                <!-- Header Chat -->
+                <div class="flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-700">
+                    <div class="flex items-center space-x-3">
+                        <button class="nav-link text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" data-page="chat-list-page">
+                            <img src="https://api.iconify.design/heroicons/arrow-left-20-solid.svg?color=currentColor" class="h-6 w-6" />
+                        </button>
+                        <img id="chat-detail-avatar" src="https://placehold.co/40x40/cbd5e1/475569?text=?" class="h-10 w-10 rounded-full bg-slate-200 object-cover">
+                        <div>
+                            <h3 id="chat-detail-username" class="font-semibold text-slate-900 dark:text-white">...</h3>
+                            <p id="chat-detail-product" class="text-sm text-slate-500 dark:text-slate-400">...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Badan Chat (Pesan) -->
+                <div id="chat-messages-container" class="flex h-[500px] flex-col space-y-3 overflow-y-auto p-4">
+                    <!-- Pesan akan di-render di sini -->
+                    <p id="chat-messages-placeholder" class="m-auto text-center text-slate-500">Memuat pesan...</p>
+                </div>
+                
+                <!-- Input Chat -->
+                <form id="send-message-form" class="flex items-center border-t border-slate-200 p-4 dark:border-slate-700">
+                    <input type="text" id="message-input" placeholder="Ketik pesan Anda..." required class="w-full rounded-full border-slate-300 px-4 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700">
+                    <button type="submit" class="ml-3 flex-shrink-0 rounded-full bg-indigo-600 p-2 text-white shadow-sm hover:bg-indigo-700">
+                        <img src="https://api.iconify.design/heroicons/paper-airplane-20-solid.svg?color=currentColor" class="h-6 w-6" />
+                    </button>
+                </form>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-12 border-t border-slate-200 py-8 dark:border-slate-700">
+        <div class="container mx-auto max-w-7xl text-center text-sm text-slate-500 dark:text-slate-400">
+            <p>&copy; 2025 Marketplace C2C. Dibuat dengan Supabase & Tailwind CSS.</p>
+        </div>
+    </footer>
+
+
+    <!-- =================================== -->
+    <!--          JAVASCRIPT LOGIC           -->
+    <!-- =================================== -->
+    <script type_ ="module">
+        // =================================
+        // 0. KONFIGURASI SUPABASE
+        // =================================
+        // GANTI DENGAN URL DAN ANON KEY SUPABASE ANDA
+        const SUPABASE_URL = 'https://poawadkkoanwsbxfyemb.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_D-ykIvUhxgefl3vf1n6u8A_2hJ0fAQ-';
+
+        if (SUPABASE_URL === 'https://YOUR_PROJECT_ID.supabase.co') {
+            console.warn('PENTING: Harap ganti SUPABASE_URL dan SUPABASE_ANON_KEY di dalam kode JavaScript (baris 610) dengan kredensial Supabase Anda!');
+        }
+
+        const { createClient } = supabase;
+        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // =================================
+        // 1. STATE MANAGEMENT (Sederhana)
+        // =================================
+        let currentUser = null;
+        let userProfile = null;
+        let favoriteProductIds = new Set();
+        let currentEditingProductId = null; // Untuk form edit produk
+        let currentChatRoomId = null; // Untuk chat
+        let chatSubscription = null; // Untuk real-time chat
+
+        // =================================
+        // 2. DOM Elements
+        // =================================
+        const pages = document.querySelectorAll('.page');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const body = document.body;
+        const globalLoader = document.getElementById('global-loader');
+        const toast = document.getElementById('toast-notification');
+        const toastMessage = document.getElementById('toast-message');
+
+        // =================================
+        // 3. UTILITIES (Loader & Navigasi)
+        // =================================
+
+        // Fungsi untuk menampilkan/menyembunyikan loader global
+        function showLoader(show) {
+            globalLoader.style.display = show ? 'flex' : 'none';
+        }
+
+        // Fungsi untuk menampilkan toast notification
+        function showToast(message, duration = 3000) {
+            toastMessage.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.opacity = '1'; }, 10); // Fade in
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => { toast.style.display = 'none'; }, 500); // Fade out
+            }, duration);
+        }
+
+        // Fungsi navigasi halaman
+        function navigateTo(pageId, tabId = null) {
+            // Hapus subscription chat jika meninggalkan halaman chat detail
+            if (chatSubscription && pageId !== 'chat-detail-page') {
+                db.removeChannel(chatSubscription);
+                chatSubscription = null;
+                console.log('Unsubscribed from chat room.');
+            }
+
+            pages.forEach(page => {
+                page.classList.remove('active');
+            });
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            } else {
+                console.warn(`Halaman "${pageId}" tidak ditemukan.`);
+                document.getElementById('landing-page').classList.add('active');
+            }
+            window.scrollTo(0, 0); // Scroll ke atas
+
+            // Handle navigasi tab di dashboard
+            if (pageId === 'dashboard-page' && tabId) {
+                activateDashboardTab(tabId);
+            }
+            
+            // Muat data khusus halaman
+            if (pageId === 'chat-list-page') {
+                fetchMyChatRooms();
+            }
+        }
+
+        // Event listener untuk semua link navigasi
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const pageId = link.getAttribute('data-page');
+                const tabId = link.getAttribute('data-tab');
+                
+                if (pageId === 'product-form-page' && !link.hasAttribute('data-id')) {
+                    // Jika ini tombol "Tambah Produk Baru", reset form
+                    resetProductForm();
+                }
+                
+                navigateTo(pageId, tabId);
+            });
+        });
+
+        // =================================
+        // 4. LOGIKA AUTENTIKASI (SUPABASE AUTH)
+        // =================================
+
+        // Update UI berdasarkan status login
+        function updateAuthState(session) {
+            if (session && session.user) {
+                currentUser = session.user;
+                body.classList.add('logged-in');
+                fetchUserProfile(); // Ambil data profil
+                fetchFavorites(); // Ambil data favorit
+            } else {
+                currentUser = null;
+                userProfile = null;
+                body.classList.remove('logged-in');
+                // Reset UI saat logout
+                document.getElementById('nav-avatar').src = 'https://placehold.co/40x40/cbd5e1/475569?text=U';
+            }
+        }
+
+        // Listener utama status autentikasi
+        db.auth.onAuthStateChanged(async (event, session) => {
+            showLoader(true);
+            updateAuthState(session);
+            if (event === 'SIGNED_IN') {
+                navigateTo('home-page');
+                fetchProducts(); // Muat produk saat login
+            } else if (event === 'SIGNED_OUT') {
+                navigateTo('landing-page');
+                document.getElementById('product-grid').innerHTML = '<p id="product-grid-placeholder" class="col-span-full text-center text-slate-500">Memuat produk...</p>';
+            }
+            showLoader(false);
+        });
+
+        // Handle Login (Email/Pass)
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoader(true);
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            const { error } = await db.auth.signInWithPassword({ email, password });
+            
+            if (error) {
+                showToast(`Error login: ${error.message}`);
+            } else {
+                showToast('Login berhasil!');
+            }
+            showLoader(false);
+        });
+
+        // Handle Sign Up (Email/Pass)
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoader(true);
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+
+            const { data, error } = await db.auth.signUp({ 
+                email, 
+                password,
+            });
+
+            if (error) {
+                showToast(`Error daftar: ${error.message}`);
+            } else {
+                // PENTING: Supabase butuh konfirmasi email by default.
+                showToast('Pendaftaran berhasil! Silakan cek email untuk konfirmasi.');
+                if (data.session) {
+                    updateAuthState(data.session);
+                    navigateTo('home-page');
+                } else {
+                    activateAuthTab('login');
+                }
+            }
+            showLoader(false);
+        });
+
+        // Handle Google Login
+        document.getElementById('google-login-button').addEventListener('click', async () => {
+            showLoader(true);
+            await db.auth.signInWithOAuth({
+                provider: 'google',
+            });
+        });
+
+        // Handle Logout
+        document.getElementById('logout-button').addEventListener('click', async () => {
+            showLoader(true);
+            await db.auth.signOut();
+            showToast('Anda telah logout.');
+            showLoader(false);
+        });
+
+        // Logika Ganti Tab di Halaman Auth
+        const authTabLogin = document.getElementById('auth-tab-login');
+        const authTabSignup = document.getElementById('auth-tab-signup');
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+
+        function activateAuthTab(tabName) {
+            if (tabName === 'login') {
+                authTabLogin.classList.add('border-indigo-600', 'text-indigo-600', 'dark:border-indigo-500', 'dark:text-indigo-500');
+                authTabLogin.classList.remove('text-slate-500', 'dark:text-slate-400');
+                authTabSignup.classList.remove('border-indigo-600', 'text-indigo-600', 'dark:border-indigo-500', 'dark:text-indigo-500');
+                authTabSignup.classList.add('text-slate-500', 'dark:text-slate-400');
+                loginForm.style.display = 'block';
+                signupForm.style.display = 'none';
+            } else {
+                authTabSignup.classList.add('border-indigo-600', 'text-indigo-600', 'dark:border-indigo-500', 'dark:text-indigo-500');
+                authTabSignup.classList.remove('text-slate-500', 'dark:text-slate-400');
+                authTabLogin.classList.remove('border-indigo-600', 'text-indigo-600', 'dark:border-indigo-500', 'dark:text-indigo-500');
+                authTabLogin.classList.add('text-slate-500', 'dark:text-slate-400');
+                loginForm.style.display = 'none';
+                signupForm.style.display = 'block';
+            }
+        }
+
+        authTabLogin.addEventListener('click', () => activateAuthTab('login'));
+        authTabSignup.addEventListener('click', () => activateAuthTab('signup'));
+
+
+        // =================================
+        // 5. LOGIKA PROFIL PENGGUNA
+        // =================================
+
+        const profileForm = document.getElementById('profile-form');
+        const profileNameInput = document.getElementById('profile-name');
+        const profileBioInput = document.getElementById('profile-bio');
+        const avatarPreview = document.getElementById('profile-avatar-preview');
+        const navAvatar = document.getElementById('nav-avatar');
+        const avatarUpload = document.getElementById('profile-avatar-upload');
+
+        // Ambil data profil dari tabel 'users'
+        async function fetchUserProfile() {
+            if (!currentUser) return;
+
+            const { data, error } = await db.from('users')
+                .select('nama, bio, avatar_url')
+                .eq('id', currentUser.id)
+                .single();
+
+            if (data) {
+                userProfile = data;
+                profileNameInput.value = data.nama || '';
+                profileBioInput.value = data.bio || '';
+                const avatarUrl = data.avatar_url ? `${data.avatar_url}?t=${new Date().getTime()}` : 'https://placehold.co/100x100/cbd5e1/475569?text=U';
+                avatarPreview.src = avatarUrl;
+                navAvatar.src = avatarUrl.replace('100x100', '40x40'); // Ukuran lebih kecil untuk navbar
+            } else if (error && error.code === 'PGRST116') {
+                console.log('Profil belum ada, akan dibuat...');
+            } else {
+                console.error('Error fetching profile:', error);
+            }
+        }
+
+        // Handle update profil
+        profileForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+            showLoader(true);
+
+            let avatar_url = userProfile ? userProfile.avatar_url : null;
+            const file = avatarUpload.files[0];
+
+            if (file) {
+                const filePath = `avatars/${currentUser.id}-${Date.now()}`;
+                
+                if (avatar_url) {
+                    try {
+                        const oldFileName = avatar_url.split('/').pop();
+                        await db.storage.from('avatars').remove([`avatars/${oldFileName}`]);
+                    } catch (removeError) {
+                        console.warn("Gagal hapus avatar lama:", removeError.message);
+                    }
+                }
+                
+                const { data: uploadData, error: uploadError } = await db.storage
+                    .from('avatars')
+                    .upload(filePath, file);
+
+                if (uploadError) {
+                    showToast(`Error upload avatar: ${uploadError.message}`);
+                    showLoader(false);
+                    return;
+                }
+                
+                const { data: urlData } = db.storage.from('avatars').getPublicUrl(uploadData.path);
+                avatar_url = urlData.publicUrl;
+            }
+
+            // Update data di tabel 'users'
+            const { error: updateError } = await db.from('users').upsert({
+                id: currentUser.id, // Kunci utama
+                nama: profileNameInput.value,
+                bio: profileBioInput.value,
+                avatar_url: avatar_url,
+                updated_at: new Date()
+            });
+
+            if (updateError) {
+                showToast(`Error update profil: ${updateError.message}`);
+            } else {
+                showToast('Profil berhasil diperbarui!');
+                await fetchUserProfile(); // Muat ulang data profil
+            }
+            showLoader(false);
+        });
+        
+        avatarUpload.addEventListener('change', () => {
+            const file = avatarUpload.files[0];
+            if (file) {
+                avatarPreview.src = URL.createObjectURL(file);
+            }
+        });
+
+        // =================================
+        // 6. LOGIKA PRODUK (CRUD)
+        // =================================
+        const productGrid = document.getElementById('product-grid');
+        const productGridPlaceholder = document.getElementById('product-grid-placeholder');
+        const searchBar = document.getElementById('search-bar');
+        const categoryFilter = document.getElementById('category-filter');
+
+        // Fungsi render kartu produk
+        function renderProductCard(product, isOwner = false) {
+            const isFavorited = favoriteProductIds.has(product.id);
+            const favIcon = isFavorited 
+                ? `<img src="https://api.iconify.design/heroicons/heart-solid.svg?color=red" class="h-6 w-6 text-red-500" />`
+                : `<img src="https://api.iconify.design/heroicons/heart.svg?color=currentColor" class="h-6 w-6 text-slate-400" />`;
+            
+            return `
+                <div class="group relative transform rounded-lg border border-slate-100 bg-white shadow-lg transition duration-300 hover:shadow-2xl hover:-translate-y-1 dark:border-slate-700 dark:bg-slate-800">
+                    <div class="aspect-square w-full overflow-hidden rounded-t-lg">
+                        <img src="${product.image_url || 'https://placehold.co/300x300/e2e8f0/94a3b8?text=Produk'}" 
+                             alt="${product.nama}" class="h-full w-full object-cover transition duration-300 group-hover:scale-110">
+                    </div>
+                    <div class="p-4">
+                        <h3 class="truncate text-lg font-semibold text-slate-900 dark:text-white" title="${product.nama}">
+                            ${product.nama}
+                        </h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">${product.category}</p>
+                        <p class="mt-2 text-xl font-bold text-indigo-600 dark:text-indigo-500">
+                            Rp ${Number(product.price).toLocaleString('id-ID')}
+                        </p>
+                    </div>
+                    
+                    <!-- Tombol Aksi -->
+                    ${isOwner ? `
+                        <!-- Tombol Edit (Pemilik) -->
+                        <button class="edit-product-btn absolute top-2 right-2 rounded-full bg-white/70 p-2 text-slate-700 shadow-md backdrop-blur-sm transition hover:bg-white" data-id="${product.id}" title="Edit Produk">
+                            <img src="https://api.iconify.design/heroicons/pencil-solid.svg?color=currentColor" class="h-5 w-5" />
+                        </button>
+                    ` : `
+                        <!-- Tombol Favorit (Bukan Pemilik) -->
+                        <button class="favorite-btn auth-only absolute top-2 right-2 rounded-full bg-white/70 p-2 shadow-md backdrop-blur-sm transition hover:bg-white" data-id="${product.id}" title="Tambah ke Favorit">
+                            ${favIcon}
+                        </button>
+                    `}
+
+                    <!-- Tombol Lihat Detail (Overlay) -->
+                    <button class="view-detail-btn absolute inset-0 z-10 opacity-0 group-hover:opacity-100" data-id="${product.id}" title="Lihat Detail"></button>
+                </div>
+            `;
+        }
+        
+        // Ambil semua produk (Marketplace)
+        async function fetchProducts() {
+            showLoader(true);
+            productGrid.innerHTML = ''; // Kosongkan dulu
+            const searchQuery = searchBar.value;
+            const category = categoryFilter.value;
+
+            let query = db.from('products').select('*');
+
+            if (searchQuery) {
+                query = query.ilike('nama', `%${searchQuery}%`);
+            }
+            if (category) {
+                query = query.eq('category', category);
+            }
+            
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('Error fetching products:', error);
+                productGridPlaceholder.textContent = 'Gagal memuat produk.';
+                productGrid.appendChild(productGridPlaceholder);
+            } else if (data.length === 0) {
+                productGridPlaceholder.textContent = 'Tidak ada produk yang ditemukan.';
+                productGrid.appendChild(productGridPlaceholder);
+            } else {
+                data.forEach(product => {
+                    productGrid.innerHTML += renderProductCard(product);
+                });
+            }
+            showLoader(false);
+        }
+
+        searchBar.addEventListener('input', () => fetchProducts());
+        categoryFilter.addEventListener('change', () => fetchProducts());
+        
+        // Ambil produk milik user
+        async function fetchMyProducts() {
+            if (!currentUser) return;
+            const grid = document.getElementById('my-products-grid');
+            const placeholder = document.getElementById('my-products-placeholder');
+            grid.innerHTML = ''; // Kosongkan
+
+            const { data, error } = await db.from('products')
+                .select('*')
+                .eq('user_id', currentUser.id);
+
+            if (error) {
+                console.error('Error fetching my products:', error);
+                placeholder.textContent = 'Gagal memuat produk Anda.';
+                grid.appendChild(placeholder);
+            } else if (data.length === 0) {
+                placeholder.textContent = 'Anda belum memiliki produk.';
+                grid.appendChild(placeholder);
+            } else {
+                data.forEach(product => {
+                    grid.innerHTML += renderProductCard(product, true); // true = isOwner
+                });
+            }
+        }
+        
+        // Form Tambah/Edit Produk
+        const productForm = document.getElementById('product-form');
+        const productFormTitle = document.getElementById('product-form-title');
+        const productIdInput = document.getElementById('product-id-input');
+        const productNameInput = document.getElementById('product-name');
+        const productDescInput = document.getElementById('product-description');
+        const productPriceInput = document.getElementById('product-price');
+        const productCategoryInput = document.getElementById('product-category');
+        const productImageUpload = document.getElementById('product-image-upload');
+        const productImagePreview = document.getElementById('product-image-preview');
+        const deleteProductBtn = document.getElementById('delete-product-button');
+        
+        productImageUpload.addEventListener('change', () => {
+            const file = productImageUpload.files[0];
+            if (file) {
+                productImagePreview.src = URL.createObjectURL(file);
+                productImagePreview.style.display = 'block';
+            }
+        });
+        
+        function resetProductForm() {
+            productForm.reset();
+            productIdInput.value = '';
+            productImagePreview.style.display = 'none';
+            productImagePreview.src = '';
+            productFormTitle.textContent = 'Tambah Produk Baru';
+            deleteProductBtn.style.display = 'none';
+            currentEditingProductId = null;
+        }
+
+        // Handle Simpan/Update Produk
+        productForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser) {
+                showToast('Anda harus login untuk menambah produk.');
+                return;
+            }
+            showLoader(true);
+
+            let imageUrl = null;
+            const file = productImageUpload.files[0];
+            
+            if (file) {
+                const filePath = `product-images/${currentUser.id}-${Date.now()}`;
+                const { data, error } = await db.storage
+                    .from('product-images')
+                    .upload(filePath, file);
+
+                if (error) {
+                    showToast(`Error upload gambar: ${error.message}`);
+                    showLoader(false);
+                    return;
+                }
+                imageUrl = db.storage.from('product-images').getPublicUrl(data.path).data.publicUrl;
+            } else if (currentEditingProductId) {
+                imageUrl = productImagePreview.src;
+            } else {
+                showToast('Harap upload gambar produk.');
+                showLoader(false);
+                return;
+            }
+            
+            const productData = {
+                user_id: currentUser.id,
+                nama: productNameInput.value,
+                description: productDescInput.value,
+                price: parseFloat(productPriceInput.value),
+                category: productCategoryInput.value,
+                image_url: imageUrl
+            };
+            
+            let error;
+            
+            if (currentEditingProductId) {
+                const { error: updateError } = await db.from('products')
+                    .update(productData)
+                    .eq('id', currentEditingProductId);
+                error = updateError;
+            } else {
+                const { error: insertError } = await db.from('products')
+                    .insert(productData);
+                error = insertError;
+            }
+
+            if (error) {
+                showToast(`Error simpan produk: ${error.message}`);
+            } else {
+                showToast(currentEditingProductId ? 'Produk berhasil diperbarui!' : 'Produk berhasil ditambahkan!');
+                resetProductForm();
+                await fetchMyProducts();
+                await fetchProducts();
+                navigateTo('dashboard-page', 'my-products');
+            }
+            showLoader(false);
+        });
+        
+        deleteProductBtn.addEventListener('click', async () => {
+             if (!currentEditingProductId) return;
+
+            // Ganti ini dengan modal kustom di produksi
+            const confirmed = confirm('Apakah Anda yakin ingin menghapus produk ini?');
+            if (!confirmed) return;
+
+            showLoader(true);
+            
+            // Hapus dari tabel 'products'
+            const { error } = await db.from('products')
+                .delete()
+                .eq('id', currentEditingProductId);
+
+            if (error) {
+                showToast(`Error hapus produk: ${error.message}`);
+            } else {
+                showToast('Produk berhasil dihapus.');
+                // (Opsional) Hapus juga gambar dari storage
+                
+                resetProductForm();
+                await fetchMyProducts();
+                await fetchProducts();
+                navigateTo('dashboard-page', 'my-products');
+            }
+            showLoader(false);
+        });
+
+        // =================================
+        // 7. LOGIKA DETAIL & FAVORIT
+        // =================================
+        const productDetailContent = document.getElementById('product-detail-content');
+
+        async function showProductDetail(productId) {
+            showLoader(true);
+            productDetailContent.innerHTML = '<p class="col-span-full text-center text-slate-500">Memuat detail produk...</p>';
+            navigateTo('detail-page');
+
+            const { data, error } = await db.from('products')
+                .select(`
+                    *,
+                    users ( id, nama, avatar_url )
+                `)
+                .eq('id', productId)
+                .single();
+
+            if (error) {
+                console.error('Error fetching detail:', error);
+                productDetailContent.innerHTML = '<p class="col-span-full text-center text-red-500">Gagal memuat detail.</p>';
+                showLoader(false);
+                return;
+            }
+
+            const seller = data.users || { id: null, nama: 'User Tidak Dikenal', avatar_url: 'https://placehold.co/50x50/cbd5e1/475569?text=?' };
+            const isFavorited = favoriteProductIds.has(data.id);
+            const favText = isFavorited ? 'Hapus dari Favorit' : 'Tambah ke Favorit';
+            const favIcon = isFavorited 
+                ? `<img src="https://api.iconify.design/heroicons/heart-solid.svg?color=red" class="h-5 w-5" />`
+                : `<img src="https://api.iconify.design/heroicons/heart.svg?color=currentColor" class="h-5 w-5" />`;
+            
+            // Sembunyikan tombol "Hubungi Penjual" jika itu produk milik sendiri
+            const isOwnProduct = currentUser && currentUser.id === seller.id;
+
+            productDetailContent.innerHTML = `
+                <!-- Kolom Gambar -->
+                <div>
+                    <img src="${data.image_url || 'https://placehold.co/500x500/e2e8f0/94a3b8?text=Produk'}" 
+                         alt="${data.nama}" class="h-full w-full rounded-lg object-cover shadow-lg">
+                </div>
+                
+                <!-- Kolom Info -->
+                <div class="flex flex-col space-y-4">
+                    <span class="rounded-full bg-indigo-100 px-3 py-1 text-sm font-medium text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">${data.category}</span>
+                    <h1 class="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">${data.nama}</h1>
+                    <p class="text-3xl font-bold text-indigo-600 dark:text-indigo-500">Rp ${Number(data.price).toLocaleString('id-ID')}</p>
+                    <p class="text-base text-slate-600 dark:text-slate-300">${data.description}</p>
+                    
+                    <!-- Info Penjual -->
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
+                        <p class="mb-2 text-sm font-medium text-slate-500 dark:text-slate-400">Penjual:</p>
+                        <div class="flex items-center space-x-3">
+                            <img src="${seller.avatar_url || 'https://placehold.co/50x50/cbd5e1/475569?text=?'}" class="h-12 w-12 rounded-full bg-slate-200 object-cover">
+                            <span class="font-semibold text-slate-800 dark:text-white">${seller.nama}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Tombol Aksi -->
+                    <div class="flex flex-col gap-3 pt-4 sm:flex-row">
+                        <button id="contact-seller-btn" 
+                                class="auth-only flex-1 rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white shadow-lg transition hover:bg-indigo-700 ${isOwnProduct ? 'hidden' : ''}"
+                                data-product-id="${data.id}" 
+                                data-seller-id="${seller.id}">
+                            Hubungi Penjual
+                        </button>
+                        <button id="detail-favorite-btn" 
+                                class="auth-only flex-1 flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-6 py-3 text-lg font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 ${isOwnProduct ? 'hidden' : ''}" 
+                                data-id="${data.id}">
+                            ${favIcon}
+                            <span>${favText}</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+            showLoader(false);
+        }
+
+        // Ambil daftar favorit user
+        async function fetchFavorites() {
+            if (!currentUser) return;
+            
+            const { data, error } = await db.from('favorites')
+                .select('product_id')
+                .eq('user_id', currentUser.id);
+
+            if (error) {
+                console.error('Error fetching favorites:', error);
+                return;
+            }
+            
+            favoriteProductIds = new Set(data.map(fav => fav.product_id));
+            await renderFavoritesGrid();
+        }
+        
+        async function renderFavoritesGrid() {
+            const grid = document.getElementById('favorites-grid');
+            const placeholder = document.getElementById('favorites-placeholder');
+            grid.innerHTML = '';
+
+            if (favoriteProductIds.size === 0) {
+                placeholder.textContent = 'Anda belum memiliki favorit.';
+                grid.appendChild(placeholder);
+                return;
+            }
+
+            const { data, error } = await db.from('products')
+                .select('*')
+                .in('id', Array.from(favoriteProductIds));
+                
+            if (error) {
+                console.error('Error fetching favorite products:', error);
+                placeholder.textContent = 'Gagal memuat favorit.';
+                grid.appendChild(placeholder);
+            } else if (data.length === 0) {
+                placeholder.textContent = 'Produk favorit tidak ditemukan.';
+                grid.appendChild(placeholder);
+            } else {
+                data.forEach(product => {
+                    grid.innerHTML += renderProductCard(product);
+                });
+            }
+        }
+        
+        async function toggleFavorite(productId) {
+            if (!currentUser) {
+                showToast('Silakan login untuk menambah favorit.');
+                return;
+            }
+            showLoader(true);
+            const isCurrentlyFavorited = favoriteProductIds.has(productId);
+
+            if (isCurrentlyFavorited) {
+                const { error } = await db.from('favorites')
+                    .delete()
+                    .eq('user_id', currentUser.id)
+                    .eq('product_id', productId);
+                
+                if (error) {
+                    showToast(`Error: ${error.message}`);
+                } else {
+                    showToast('Dihapus dari favorit.');
+                    favoriteProductIds.delete(productId);
+                }
+            } else {
+                const { error } = await db.from('favorites')
+                    .insert({
+                        user_id: currentUser.id,
+                        product_id: productId
+                    });
+                
+                if (error) {
+                    showToast(`Error: ${error.message}`);
+                } else {
+                    showToast('Ditambahkan ke favorit!');
+                    favoriteProductIds.add(productId);
+                }
+            }
+            
+            // Re-render UI
+            await fetchProducts();
+            await renderFavoritesGrid();
+            const detailBtn = document.getElementById('detail-favorite-btn');
+            if (detailBtn && detailBtn.getAttribute('data-id') === productId) {
+                const isFavorited = favoriteProductIds.has(productId);
+                detailBtn.innerHTML = isFavorited
+                    ? `<img src="https://api.iconify.design/heroicons/heart-solid.svg?color=red" class="h-5 w-5" /> <span>Hapus dari Favorit</span>`
+                    : `<img src="https://api.iconify.design/heroicons/heart.svg?color=currentColor" class="h-5 w-5" /> <span>Tambah ke Favorit</span>`;
+            }
+            
+            showLoader(false);
+        }
+
+        // =================================
+        // 8. LOGIKA DASHBOARD TABS
+        // =================================
+        const dashboardTabs = document.querySelectorAll('.dashboard-tab');
+        const dashboardContents = document.querySelectorAll('.dashboard-tab-content');
+
+        function activateDashboardTab(tabId) {
+            dashboardTabs.forEach(tab => {
+                if (tab.getAttribute('data-tab') === tabId) {
+                    tab.classList.add('border-indigo-600', 'text-indigo-600', 'dark:border-indigo-500', 'dark:text-indigo-500');
+                    tab.classList.remove('border-transparent', 'text-slate-500', 'dark:text-slate-400');
+                } else {
+                    tab.classList.remove('border-indigo-600', 'text-indigo-600', 'dark:border-indigo-500', 'dark:text-indigo-500');
+                    tab.classList.add('border-transparent', 'text-slate-500', 'dark:text-slate-400');
+                }
+            });
+
+            dashboardContents.forEach(content => {
+                content.style.display = content.id === `tab-${tabId}` ? 'block' : 'none';
+            });
+            
+            if (tabId === 'my-products') {
+                fetchMyProducts();
+            } else if (tabId === 'favorites') {
+                renderFavoritesGrid();
+            } else if (tabId === 'profile') {
+                fetchUserProfile();
+            }
+        }
+        
+        dashboardTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                activateDashboardTab(tab.getAttribute('data-tab'));
+            });
+        });
+
+        // =================================
+        // 9. LOGIKA CHAT (BARU)
+        // =================================
+        const chatListContainer = document.getElementById('chat-list-container');
+        const chatListPlaceholder = document.getElementById('chat-list-placeholder');
+        const chatMessagesContainer = document.getElementById('chat-messages-container');
+        const chatMessagesPlaceholder = document.getElementById('chat-messages-placeholder');
+        const sendMessageForm = document.getElementById('send-message-form');
+        const messageInput = document.getElementById('message-input');
+        
+        // Ambil daftar chat (Inbox)
+        async function fetchMyChatRooms() {
+            if (!currentUser) return;
+            showLoader(true);
+            chatListContainer.innerHTML = '';
+            
+            const { data, error } = await db.from('chat_rooms')
+                .select(`
+                    id,
+                    product_id,
+                    products ( nama, image_url ),
+                    buyer:buyer_id ( nama, avatar_url ),
+                    seller:seller_id ( nama, avatar_url )
+                `)
+                .or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`);
+
+            if (error) {
+                console.error('Error fetching chat rooms:', error);
+                chatListPlaceholder.textContent = 'Gagal memuat percakapan.';
+                chatListContainer.appendChild(chatListPlaceholder);
+            } else if (data.length === 0) {
+                chatListPlaceholder.textContent = 'Belum ada percakapan.';
+                chatListContainer.appendChild(chatListPlaceholder);
+            } else {
+                data.forEach(room => {
+                    // Tentukan siapa "orang lain" dalam chat
+                    const otherUser = room.buyer_id === currentUser.id ? room.seller : room.buyer;
+                    chatListContainer.innerHTML += `
+                        <button class="chat-list-item flex w-full items-center space-x-4 rounded-lg p-3 text-left transition hover:bg-slate-100 dark:hover:bg-slate-700"
+                                data-room-id="${room.id}">
+                            <img src="${otherUser.avatar_url || 'https://placehold.co/50x50/cbd5e1/475569?text=?'}" 
+                                 class="h-12 w-12 rounded-full bg-slate-200 object-cover">
+                            <div class="flex-1 overflow-hidden">
+                                <h4 class="font-semibold text-slate-900 dark:text-white">${otherUser.nama}</h4>
+                                <p class="truncate text-sm text-slate-500 dark:text-slate-400">
+                                    Mengenai: ${room.products.nama}
+                                </p>
+                            </div>
+                        </button>
+                    `;
+                });
+            }
+            showLoader(false);
+        }
+        
+        // Navigasi ke detail chat
+        function navigateToChatDetail(roomId) {
+            currentChatRoomId = roomId;
+            navigateTo('chat-detail-page');
+            renderChatDetail(roomId);
+        }
+
+        // Render halaman detail chat
+        async function renderChatDetail(roomId) {
+            if (!currentUser) return;
+            showLoader(true);
+            chatMessagesContainer.innerHTML = ''; // Kosongkan
+            
+            // 1. Ambil info room
+            const { data: roomData, error: roomError } = await db.from('chat_rooms')
+                .select(`
+                    product_id,
+                    products ( nama ),
+                    buyer:buyer_id ( id, nama, avatar_url ),
+                    seller:seller_id ( id, nama, avatar_url )
+                `)
+                .eq('id', roomId)
+                .single();
+            
+            if (roomError) {
+                console.error('Error fetching room info:', roomError);
+                showLoader(false);
+                return;
+            }
+
+            // Set header chat
+            const otherUser = roomData.buyer.id === currentUser.id ? roomData.seller : roomData.buyer;
+            document.getElementById('chat-detail-avatar').src = otherUser.avatar_url || 'https://placehold.co/40x40/cbd5e1/475569?text=?';
+            document.getElementById('chat-detail-username').textContent = otherUser.nama;
+            document.getElementById('chat-detail-product').textContent = `Mengenai: ${roomData.products.nama}`;
+            
+            // 2. Ambil pesan
+            const { data: messages, error: messagesError } = await db.from('chat_messages')
+                .select('*')
+                .eq('room_id', roomId);
+                // .order('created_at', { ascending: true }); // Supabase v2. `order` tidak diperlukan jika RLS menggunakannya.
+
+            if (messagesError) {
+                console.error('Error fetching messages:', messagesError);
+            } else if (messages.length === 0) {
+                chatMessagesPlaceholder.textContent = 'Belum ada pesan. Mulailah percakapan!';
+                chatMessagesContainer.appendChild(chatMessagesPlaceholder);
+            } else {
+                messages.forEach(renderMessage);
+            }
+            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight; // Scroll ke bawah
+            showLoader(false);
+
+            // 3. Setup Real-time Subscription
+            if (chatSubscription) {
+                db.removeChannel(chatSubscription); // Hapus subscription lama jika ada
+            }
+            
+            chatSubscription = db.channel(`chat_room_${roomId}`)
+                .on('postgres_changes', { 
+                    event: 'INSERT', 
+                    schema: 'public', 
+                    table: 'chat_messages',
+                    filter: `room_id=eq.${roomId}`
+                }, (payload) => {
+                    console.log('Pesan baru diterima:', payload.new);
+                    renderMessage(payload.new);
+                    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+                })
+                .subscribe((status, err) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log('Berhasil subscribe ke chat room:', roomId);
+                    }
+                    if (status === 'CHANNEL_ERROR') {
+                        console.error('Subscription error:', err);
+                    }
+                });
+        }
+        
+        // Fungsi untuk render satu bubble pesan
+        function renderMessage(message) {
+            // Hapus placeholder jika ada
+            if (chatMessagesPlaceholder) chatMessagesPlaceholder.remove();
+            
+            const isSender = message.sender_id === currentUser.id;
+            const bubbleClass = isSender ? 'chat-bubble-sender' : 'chat-bubble-receiver';
+            
+            chatMessagesContainer.innerHTML += `
+                <div class="chat-bubble ${bubbleClass}">
+                    ${message.content}
+                    <!-- <span class="block mt-1 text-xs opacity-70">${new Date(message.created_at).toLocaleTimeString('id-ID')}</span> -->
+                </div>
+            `;
+        }
+        
+        // Handle kirim pesan
+        sendMessageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser || !currentChatRoomId) return;
+
+            const content = messageInput.value.trim();
+            if (content === '') return;
+
+            messageInput.value = ''; // Kosongkan input
+            
+            const { error } = await db.from('chat_messages').insert({
+                room_id: currentChatRoomId,
+                sender_id: currentUser.id,
+                content: content
+            });
+
+            if (error) {
+                showToast(`Error kirim pesan: ${error.message}`);
+                messageInput.value = content; // Kembalikan pesan jika gagal
+            }
+            // Pesan akan muncul via subscription real-time
+        });
+        
+        // Handle tombol "Hubungi Penjual"
+        async function handleContactSeller(productId, sellerId) {
+            if (!currentUser) {
+                showToast('Login untuk memulai chat.');
+                return;
+            }
+            if (currentUser.id === sellerId) {
+                showToast('Ini adalah produk Anda sendiri.');
+                return;
+            }
+            showLoader(true);
+
+            // 1. Cek apakah room sudah ada
+            const { data: existingRoom, error: checkError } = await db.from('chat_rooms')
+                .select('id')
+                .eq('product_id', productId)
+                .eq('buyer_id', currentUser.id)
+                .single(); // Asumsi 1 pembeli hanya bisa buat 1 room per produk
+
+            if (existingRoom) {
+                // 2a. Jika ada, navigasi ke room tsb
+                navigateToChatDetail(existingRoom.id);
+            } else if (checkError && checkError.code === 'PGRST116') { // 'PGRST116' = Not found
+                // 2b. Jika tidak ada, buat room baru
+                const { data: newRoom, error: createError } = await db.from('chat_rooms')
+                    .insert({
+                        product_id: productId,
+                        buyer_id: currentUser.id,
+                        seller_id: sellerId
+                    })
+                    .select('id')
+                    .single();
+
+                if (createError) {
+                    showToast(`Error membuat chat room: ${createError.message}`);
+                } else {
+                    navigateToChatDetail(newRoom.id);
+                }
+            } else {
+                showToast(`Error mencari chat room: ${checkError.message}`);
+            }
+            showLoader(false);
+        }
+
+        // =================================
+        // 10. EVENT DELEGATION (UNTUK KONTEN DINAMIS)
+        // =================================
+        document.body.addEventListener('click', async (e) => {
+            const viewDetailBtn = e.target.closest('.view-detail-btn');
+            const editProductBtn = e.target.closest('.edit-product-btn');
+            const favoriteBtn = e.target.closest('.favorite-btn');
+            const detailFavoriteBtn = e.target.closest('#detail-favorite-btn');
+            const contactSellerBtn = e.target.closest('#contact-seller-btn'); // Baru
+            const chatListItem = e.target.closest('.chat-list-item'); // Baru
+
+            if (viewDetailBtn) {
+                const productId = viewDetailBtn.getAttribute('data-id');
+                await showProductDetail(productId);
+            }
+
+            if (editProductBtn) {
+                const productId = editProductBtn.getAttribute('data-id');
+                showLoader(true);
+                
+                const { data, error } = await db.from('products')
+                    .select('*')
+                    .eq('id', productId)
+                    .single();
+                
+                if (data) {
+                    productFormTitle.textContent = 'Edit Produk';
+                    productIdInput.value = data.id;
+                    productNameInput.value = data.nama;
+                    productDescInput.value = data.description;
+                    productPriceInput.value = data.price;
+                    productCategoryInput.value = data.category;
+                    productImagePreview.src = data.image_url;
+                    productImagePreview.style.display = 'block';
+                    deleteProductBtn.style.display = 'block';
+                    currentEditingProductId = data.id;
+                    
+                    navigateTo('product-form-page');
+                } else {
+                    showToast('Gagal memuat data produk.');
+                }
+                showLoader(false);
+            }
+            
+            if (favoriteBtn) {
+                const productId = favoriteBtn.getAttribute('data-id');
+                await toggleFavorite(productId);
+            }
+            
+            if (detailFavoriteBtn) {
+                const productId = detailFavoriteBtn.getAttribute('data-id');
+                await toggleFavorite(productId);
+            }
+            
+            // Handle klik "Hubungi Penjual"
+            if (contactSellerBtn) {
+                const productId = contactSellerBtn.getAttribute('data-product-id');
+                const sellerId = contactSellerBtn.getAttribute('data-seller-id');
+                await handleContactSeller(productId, sellerId);
+            }
+            
+            // Handle klik item di Inbox
+            if (chatListItem) {
+                const roomId = chatListItem.getAttribute('data-room-id');
+                navigateToChatDetail(roomId);
+            }
+        });
+
+        // =================================
+        // 11. INISIALISASI APLIKASI
+        // =================================
+        if (!currentUser) {
+            fetchProducts();
+        }
+    </script>
+
+</body>
+</html>
