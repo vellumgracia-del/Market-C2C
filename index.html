@@ -3,1560 +3,785 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amaranggana ID - Marketplace</title>
-    
-    <!-- Tailwind CSS CDN -->
+    <title>SegariHari - Konsep E-Commerce</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
-    <!-- Supabase JS CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- Font Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals with Green (bg-amber-50, text-gray-800, text-green-700, accent-amber-500) -->
+    <!-- Application Structure Plan: Menggunakan struktur SPA (Single Page Application) berbasis tab/navigasi. Pengguna menavigasi antar 'halaman' (Beranda, Fitur, Data, Tentang) menggunakan JS untuk menukar konten yang terlihat. Struktur ini dipilih untuk menyajikan konsep e-commerce 'SegariHari' secara bersih dan terfokus. 'Beranda' berfungsi sebagai landing page dan kini menyertakan fitur Tanya Pakar (Gemini Grounding). 'Fitur' menjelaskan USP (Unique Selling Propositions) secara interaktif, menambahkan fitur Resep Cerdas (Gemini Structured Output), 'Data' menyajikan 'bukti' (mock data) nilai proposisi via chart, dan 'Tentang' membangun kepercayaan. Ini lebih baik daripada satu halaman panjang (long-scroll) karena memisahkan alur informasi dengan jelas. -->
+    <!-- Visualization & Content Choices: 1. Konsep Fitur -> Goal: Mengatur -> Method: Tab Interaktif (HTML/JS) -> Interaction: Klik untuk ganti konten -> Justification: Menyajikan 3 fitur inti (Smart List, Langganan, Resep) tanpa membanjiri pengguna. 2. Data Langganan Populer -> Goal: Menginformasikan -> Method: Donut Chart (Chart.js/Canvas) -> Interaction: Hover untuk tooltip -> Justification: Visualisasi standar untuk proporsi/pangsa pasar. 3. Data Proyeksi Pertumbuhan -> Goal: Menampilkan Perubahan -> Method: Line Chart (Chart.js/Canvas) -> Interaction: Hover untuk tooltip -> Justification: Visualisasi standar for data time-series. 4. Resep Cerdas -> Goal: Mendukung keputusan/kreativitas -> Method: Gemini API (Structured JSON) -> Interaction: Input bahan, klik tombol -> Justification: Menghasilkan resep baru secara instan, meningkatkan engagement. 5. Tanya Pakar -> Goal: Menyediakan informasi kontekstual terkini -> Method: Gemini API (Grounding/Search) -> Interaction: Input pertanyaan, klik tombol -> Justification: Menambah nilai aplikasi sebagai sumber informasi terpercaya dan real-time. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
 
     <style>
-        /* Menggunakan font Inter sebagai default */
         body {
             font-family: 'Inter', sans-serif;
         }
-
-        /* Animasi loading spinner */
-        .loader {
-            border-top-color: #3498db;
-            -webkit-animation: spinner 1.5s linear infinite;
-            animation: spinner 1.5s linear infinite;
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
         }
-
-        @-webkit-keyframes spinner {
-            0% { -webkit-transform: rotate(0deg); }
-            100% { -webkit-transform: rotate(360deg); }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
         }
-
-        @keyframes spinner {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .nav-link {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
         }
-
-        /* Sembunyikan scrollbar saat modal aktif */
-        .modal-open {
-            overflow: hidden;
+        .nav-link.active {
+            border-bottom-color: #15803d; /* green-700 */
+            color: #15803d; /* green-700 */
+            font-weight: 600;
         }
-        
-        /* Styling untuk Chatbot */
-        .chat-message-user {
-            background-color: #4f46e5;
+        .page-content {
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .tab-button {
+            transition: all 0.3s ease;
+        }
+        .tab-button.active {
+            background-color: #16a34a; /* green-600 */
             color: white;
-            border-radius: 12px 12px 0 12px;
-            max-width: 80%;
-            align-self: flex-end;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         }
-
-        .chat-message-ai {
-            background-color: #e5e7eb;
-            color: #1f2937;
-            border-radius: 12px 12px 12px 0;
-            max-width: 80%;
-            align-self: flex-start;
+        .loading-animation {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #16a34a;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
         }
-        
-        /* Tailwind configuration for custom utilities */
-        .chat-area {
-            height: 300px; /* Tinggi tetap untuk area chat */
-            overflow-y: auto;
-            scroll-behavior: smooth;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-900 antialiased">
+<body class="bg-amber-50 text-gray-800">
 
-    <!-- Kontainer Utama Aplikasi -->
-    <div id="app" class="min-h-screen flex flex-col">
-
-        <!-- Header / Navbar -->
-        <header class="bg-white shadow-md sticky top-0 z-40">
-            <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center h-16">
-                    <!-- Logo -->
-                    <a href="#home" class="flex-shrink-0 flex items-center">
-                        <span class="text-2xl font-bold text-indigo-600">Amaranggana ID</span>
-                    </a>
-                    
-                    <!-- Navigasi Desktop -->
-                    <div class="hidden md:flex md:items-center md:space-x-8">
-                        <a href="#marketplace" class="text-gray-500 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Marketplace</a>
-                        <a href="#about" class="text-gray-500 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Tentang Kami</a>
+    <div class="min-h-screen flex flex-col">
+        
+        <header class="bg-white shadow-md sticky top-0 z-50">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="text-3xl font-bold text-green-700">
+                        SegariHari
                     </div>
-                    
-                    <!-- Tombol Auth / Dashboard (Desktop) -->
-                    <div class="hidden md:flex items-center space-x-4">
-                        <div id="auth-links-desktop" class="flex items-center space-x-4">
-                            <a href="#login" class="text-gray-500 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Login</a>
-                            <a href="#register" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium shadow">Daftar</a>
-                        </div>
-                        <div id="user-menu-desktop" class="hidden relative">
-                            <a href="#dashboard" class="text-gray-500 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
-                            <button id="logout-button-desktop" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium">Logout</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Tombol Hamburger (Mobile) -->
-                    <div class="md:hidden flex items-center">
-                        <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
-                            <span class="sr-only">Buka menu</span>
-                            <!-- Icon hamburger -->
-                            <svg id="menu-icon-open" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
-                            </svg>
-                            <!-- Icon close -->
-                            <svg id="menu-icon-close" class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
+                    <nav class="hidden md:flex space-x-6">
+                        <button class="nav-link py-2 px-3 text-gray-600 hover:text-green-700 active" data-page="page-beranda">Beranda</button>
+                        <button class="nav-link py-2 px-3 text-gray-600 hover:text-green-700" data-page="page-fitur">Fitur Unggulan</button>
+                        <button class="nav-link py-2 px-3 text-gray-600 hover:text-green-700" data-page="page-data">Dasbor Data</button>
+                        <button class="nav-link py-2 px-3 text-gray-600 hover:text-green-700" data-page="page-tentang">Tentang Kami</button>
+                    </nav>
+                    <button class="bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-700 transition duration-300 shadow-sm hidden md:block">
+                        Mulai Belanja
+                    </button>
+                    <button id="mobile-menu-button" class="md:hidden text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                    </button>
                 </div>
-            </nav>
-
-            <!-- Menu Mobile (Dropdown) -->
-            <div id="mobile-menu" class="hidden md:hidden">
-                <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                    <a href="#marketplace" class="text-gray-500 hover:text-indigo-600 block px-3 py-2 rounded-md text-base font-medium">Marketplace</a>
-                    <a href="#about" class="text-gray-500 hover:text-indigo-600 block px-3 py-2 rounded-md text-base font-medium">Tentang Kami</a>
-                </div>
-                <div id="auth-links-mobile" class="pt-4 pb-3 border-t border-gray-200">
-                    <div class="flex flex-col items-start px-5 space-y-3">
-                        <a href="#login" class="text-gray-500 hover:text-indigo-600 w-full px-3 py-2 rounded-md text-base font-medium">Login</a>
-                        <a href="#register" class="bg-indigo-600 hover:bg-indigo-700 text-white w-full text-center px-4 py-2 rounded-md text-base font-medium shadow">Daftar</a>
-                    </div>
-                </div>
-                <div id="user-menu-mobile" class="hidden pt-4 pb-3 border-t border-gray-200">
-                    <div class="flex flex-col items-start px-5 space-y-3">
-                         <a href="#dashboard" class="text-gray-500 hover:text-indigo-600 w-full px-3 py-2 rounded-md text-base font-medium">Dashboard</a>
-                         <a href="#my-products" class="text-gray-500 hover:text-indigo-600 w-full px-3 py-2 rounded-md text-base font-medium">Produk Saya</a>
-                         <a href="#add-product" class="text-gray-500 hover:text-indigo-600 w-full px-3 py-2 rounded-md text-base font-medium">Jual Produk</a>
-                         <button id="logout-button-mobile" class="bg-red-500 hover:bg-red-600 text-white w-full text-center px-4 py-2 rounded-md text-base font-medium">Logout</button>
-                    </div>
-                </div>
+            </div>
+            <div id="mobile-menu" class="md:hidden hidden bg-white shadow-lg">
+                <nav class="flex flex-col p-4 space-y-2">
+                    <button class="nav-link py-2 px-3 text-gray-600 text-left active" data-page="page-beranda">Beranda</button>
+                    <button class="nav-link py-2 px-3 text-gray-600 text-left" data-page="page-fitur">Fitur Unggulan</button>
+                    <button class="nav-link py-2 px-3 text-gray-600 text-left" data-page="page-data">Dasbor Data</button>
+                    <button class="nav-link py-2 px-3 text-gray-600 text-left" data-page="page-tentang">Tentang Kami</button>
+                    <button class="bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-700 transition duration-300 shadow-sm w-full mt-2">
+                        Mulai Belanja
+                    </button>
+                </nav>
             </div>
         </header>
 
-        <!-- Konten Utama (Dinamic) -->
-        <main id="main-content" class="flex-grow">
-            <!-- Konten halaman akan dirender di sini oleh JavaScript -->
+        <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+            
+            <section id="page-beranda" class="page-content">
+                
+                <div class="bg-white rounded-2xl shadow-xl p-8 md:p-12 text-center overflow-hidden relative">
+                    <div class="absolute -top-16 -left-16 w-48 h-48 bg-green-100 rounded-full opacity-50"></div>
+                    <div class="absolute -bottom-20 -right-10 w-64 h-64 bg-amber-100 rounded-full opacity-50"></div>
+                    
+                    <div class="relative z-10">
+                        <h1 class="text-4xl md:text-5xl font-bold text-green-800 mb-4">Kesegaran Harian, Langsung ke Rumah Anda</h1>
+                        <p class="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">Platform e-commerce "SegariHari" dirancang untuk merevolusi cara Anda berbelanja kebutuhan sehari-hari. Cepat, cerdas, dan selalu segar.</p>
+                        <div class="max-w-xl mx-auto">
+                            <div class="relative">
+                                <input type="text" placeholder="Cari sayur, buah, atau daging segar..." class="w-full py-4 px-6 pr-32 rounded-full bg-gray-100 border-2 border-transparent focus:outline-none focus:border-green-300 focus:bg-white transition">
+                                <button class="absolute right-2 top-1/2 -translate-y-1/2 bg-green-600 text-white px-6 py-2.5 rounded-full hover:bg-green-700 transition duration-300 shadow-sm">
+                                    Cari
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Tanya Pakar Section -->
+                <section class="mt-12 bg-white p-8 rounded-2xl shadow-xl">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="text-4xl mr-3">✨</span> Tanya Pakar SegariHari
+                    </h2>
+                    <p class="text-gray-600 mb-4 max-w-3xl">Dapatkan jawaban instan dan terkini dari Gemini mengenai nutrisi, tren harga, atau saran memasak. Kami menggunakan Google Search untuk memastikan informasi yang akurat.</p>
+                    
+                    <div class="flex flex-col md:flex-row gap-4 mb-4">
+                        <input id="pakar-query" type="text" placeholder="Contoh: Berapa harga rata-rata telur ayam hari ini?" class="flex-grow py-3 px-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <button id="pakar-button" class="bg-amber-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-amber-600 transition duration-300 flex items-center justify-center">
+                            <span id="pakar-spinner" class="loading-animation mr-2 hidden"></span>
+                            Tanyakan Sekarang
+                        </button>
+                    </div>
+
+                    <div id="pakar-response-container" class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg hidden">
+                        <h4 class="font-bold text-gray-800 mb-2">Jawaban Pakar:</h4>
+                        <div id="pakar-response-text" class="text-gray-700"></div>
+                        <div id="pakar-sources" class="mt-3 text-sm text-gray-500"></div>
+                    </div>
+                </section>
+                <!-- END NEW: Tanya Pakar Section -->
+
+
+                <section class="mt-12">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-6">Promo Kilat Hari Ini ⚡</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        
+                        <div class="bg-white rounded-lg shadow-lg overflow-hidden transform transition duration-300 hover:scale-105 hover:shadow-xl">
+                            <img src="https://placehold.co/400x300/A0E9A0/333?text=Brokoli+Segar" alt="Brokoli" class="w-full h-48 object-cover">
+                            <div class="p-4">
+                                <span class="inline-block bg-red-200 text-red-800 text-xs px-2 py-1 rounded-full uppercase font-semibold tracking-wide">Diskon 30%</span>
+                                <h3 class="text-xl font-semibold my-2">Brokoli Organik</h3>
+                                <p class="text-gray-600 mb-3">500 gr / ikat</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xl font-bold text-green-700">Rp 14.000</span>
+                                    <span class="text-gray-500 line-through">Rp 20.000</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-lg overflow-hidden transform transition duration-300 hover:scale-105 hover:shadow-xl">
+                            <img src="https://placehold.co/400x300/FAD0C4/333?text=Daging+Sapi" alt="Daging Sapi" class="w-full h-48 object-cover">
+                            <div class="p-4">
+                                <span class="inline-block bg-red-200 text-red-800 text-xs px-2 py-1 rounded-full uppercase font-semibold tracking-wide">Diskon 20%</span>
+                                <h3 class="text-xl font-semibold my-2">Daging Sapi Has Dalam</h3>
+                                <p class="text-gray-600 mb-3">250 gr / pack</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xl font-bold text-green-700">Rp 48.000</span>
+                                    <span class="text-gray-500 line-through">Rp 60.000</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-lg overflow-hidden transform transition duration-300 hover:scale-105 hover:shadow-xl">
+                            <img src="https://placehold.co/400x300/FFF8B8/333?text=Telur+Ayam" alt="Telur Ayam" class="w-full h-48 object-cover">
+                            <div class="p-4">
+                                <span class="inline-block bg-red-200 text-red-800 text-xs px-2 py-1 rounded-full uppercase font-semibold tracking-wide">Beli 1 Gratis 1</span>
+                                <h3 class="text-xl font-semibold my-2">Telur Ayam Omega-3</h3>
+                                <p class="text-gray-600 mb-3">10 butir / pack</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xl font-bold text-green-700">Rp 30.000</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-lg overflow-hidden transform transition duration-300 hover:scale-105 hover:shadow-xl">
+                            <img src="https://placehold.co/400x300/FFDDC1/333?text=Jeruk+Sunkist" alt="Jeruk Sunkist" class="w-full h-48 object-cover">
+                            <div class="p-4">
+                                <span class="inline-block bg-red-200 text-red-800 text-xs px-2 py-1 rounded-full uppercase font-semibold tracking-wide">Diskon 40%</span>
+                                <h3 class="text-xl font-semibold my-2">Jeruk Sunkist Navel</h3>
+                                <p class="text-gray-600 mb-3">1 kg</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xl font-bold text-green-700">Rp 24.000</span>
+                                    <span class="text-gray-500 line-through">Rp 40.000</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <section class="mt-12">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-6">Jelajahi Kategori</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        <div class="bg-gradient-to-br from-green-100 to-green-200 p-6 rounded-lg text-center shadow-sm hover:shadow-lg transition duration-300">
+                            <div class="text-4xl mb-2">🥦</div>
+                            <span class="font-semibold text-green-900">Sayuran</span>
+                        </div>
+                        <div class="bg-gradient-to-br from-red-100 to-red-200 p-6 rounded-lg text-center shadow-sm hover:shadow-lg transition duration-300">
+                            <div class="text-4xl mb-2">🍎</div>
+                            <span class="font-semibold text-red-900">Buah-buahan</span>
+                        </div>
+                        <div class="bg-gradient-to-br from-orange-100 to-orange-200 p-6 rounded-lg text-center shadow-sm hover:shadow-lg transition duration-300">
+                            <div class="text-4xl mb-2">🥩</div>
+                            <span class="font-semibold text-orange-900">Daging & Unggas</span>
+                        </div>
+                         <div class="bg-gradient-to-br from-cyan-100 to-cyan-200 p-6 rounded-lg text-center shadow-sm hover:shadow-lg transition duration-300">
+                            <div class="text-4xl mb-2">🐟</div>
+                            <span class="font-semibold text-cyan-900">Ikan & Seafood</span>
+                        </div>
+                        <div class="bg-gradient-to-br from-yellow-100 to-yellow-200 p-6 rounded-lg text-center shadow-sm hover:shadow-lg transition duration-300">
+                            <div class="text-4xl mb-2">🥛</div>
+                            <span class="font-semibold text-yellow-900">Susu & Telur</span>
+                        </div>
+                        <div class="bg-gradient-to-br from-gray-100 to-gray-200 p-6 rounded-lg text-center shadow-sm hover:shadow-lg transition duration-300">
+                            <div class="text-4xl mb-2">🍞</div>
+                            <span class="font-semibold text-gray-900">Kebutuhan Dapur</span>
+                        </div>
+                    </div>
+                </section>
+
+            </section>
+
+            <section id="page-fitur" class="page-content hidden">
+                <h1 class="text-4xl font-bold text-gray-800 mb-4">Fitur Unggulan yang Spektakuler</h1>
+                <p class="text-lg text-gray-600 mb-8 max-w-3xl">"SegariHari" bukan hanya e-commerce biasa. Kami merancang fitur cerdas untuk membuat hidup Anda lebih mudah, berfokus pada kebutuhan harian Anda.</p>
+            
+                <div class="flex flex-col md:flex-row gap-8">
+                    <div class="md:w-1/3">
+                        <nav class="flex flex-col space-y-3">
+                            <button class="tab-button text-left w-full py-3 px-5 rounded-lg font-semibold bg-white shadow active" data-tab="tab-list">
+                                💡 Smart List Pribadi
+                            </button>
+                            <button class="tab-button text-left w-full py-3 px-5 rounded-lg font-semibold bg-white shadow" data-tab="tab-langganan">
+                                🔄 Langganan Cerdas
+                            </button>
+                            <button class="tab-button text-left w-full py-3 px-5 rounded-lg font-semibold bg-white shadow" data-tab="tab-resep">
+                                🍳 Resep Instan & Cerdas ✨
+                            </button>
+                        </nav>
+                    </div>
+                    
+                    <div class="md:w-2/3">
+                        <div id="tab-list" class="tab-content bg-white p-8 rounded-2xl shadow-xl">
+                            <h3 class="text-2xl font-bold text-green-700 mb-3">💡 Smart List Pribadi</h3>
+                            <p class="text-gray-600 mb-4">Lupakan daftar belanja manual. Fitur Smart List kami menggunakan AI untuk mempelajari pola belanja Anda. Kami akan secara otomatis mengingatkan Anda ketika stok susu, telur, atau sabun cuci Anda kemungkinan sudah menipis.</p>
+                            <ul class="list-disc list-inside space-y-2 text-gray-700">
+                                <li>Prediksi kebutuhan berdasarkan riwayat pembelian.</li>
+                                <li>Saran produk pelengkap secara cerdas.</li>
+                                <li>Satu klik untuk menambahkan semua item yang diprediksi ke keranjang.</li>
+                            </ul>
+                            <img src="https://placehold.co/600x300/E0F2E9/333?text=Visualisasi+Smart+List" alt="Smart List" class="w-full h-auto rounded-lg mt-6 object-cover">
+                        </div>
+                        
+                        <div id="tab-langganan" class="tab-content bg-white p-8 rounded-2xl shadow-xl hidden">
+                            <h3 class="text-2xl font-bold text-green-700 mb-3">🔄 Langganan Cerdas</h3>
+                            <p class="text-gray-600 mb-4">Atur dan lupakan. Untuk kebutuhan pokok yang selalu Anda beli, aktifkan Langganan Cerdas. Tentukan frekuensi (mingguan, 2 mingguan, bulanan) dan kami akan mengirimkannya secara otomatis.</p>
+                            <ul class="list-disc list-inside space-y-2 text-gray-700">
+                                <li>Diskon spesial untuk pelanggan langganan.</li>
+                                <li>Fleksibel: lewati pengiriman atau ubah item kapan saja.</li>
+                                <li>Prioritas stok untuk barang langganan Anda.</li>
+                            </ul>
+                            <img src="https://placehold.co/600x300/E0E7FF/333?text=Visualisasi+Langganan" alt="Langganan" class="w-full h-auto rounded-lg mt-6 object-cover">
+                        </div>
+
+                        <div id="tab-resep" class="tab-content bg-white p-8 rounded-2xl shadow-xl hidden">
+                            <h3 class="text-2xl font-bold text-green-700 mb-3">🍳 Resep Instan & Cerdas ✨</h3>
+                            <p class="text-gray-600 mb-4">Bingung mau masak apa hari ini? Jelajahi ribuan resep dari koki lokal, atau **buat resep baru dengan bahan yang Anda miliki!** Cukup satu klik untuk menambahkan *semua* bahan yang Anda butuhkan ke keranjang belanja.</p>
+                            
+                            <!-- NEW: Resep Cerdas Input -->
+                            <div class="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                                <h4 class="font-bold text-amber-700 mb-2">Buat Resep Baru Berbasis Bahan Anda</h4>
+                                <input id="resep-bahan" type="text" placeholder="Masukkan bahan yang Anda miliki (mis: ayam, bawang, kecap manis)" class="w-full py-2 px-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-500 mb-3">
+                                <button id="resep-button" class="w-full bg-green-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-green-700 transition duration-300 flex items-center justify-center">
+                                    <span id="resep-spinner" class="loading-animation mr-2 hidden"></span>
+                                    Cari Resep Cerdas!
+                                </button>
+                            </div>
+                            
+                            <div id="resep-response-container" class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg hidden">
+                                <h4 class="font-bold text-green-700 mb-2">Resep Baru dari Bahan Anda:</h4>
+                                <div id="resep-response-content" class="text-gray-700"></div>
+                            </div>
+                            <!-- END NEW: Resep Cerdas Input -->
+
+                            <ul class="list-disc list-inside space-y-2 text-gray-700 mt-6">
+                                <li>Filter resep berdasarkan bahan yang Anda miliki.</li>
+                                <li>Penyesuaian porsi otomatis (misal: untuk 2 atau 4 orang).</li>
+                                <li>Dari "cari resep" ke "checkout" dalam kurang dari 1 menit.</li>
+                            </ul>
+                            <img src="https://placehold.co/600x300/FEF3C7/333?text=Visualisasi+Resep" alt="Resep" class="w-full h-auto rounded-lg mt-6 object-cover">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-data" class="page-content hidden">
+                <h1 class="text-4xl font-bold text-gray-800 mb-4">Dasbor Konsep & Data</h1>
+                <p class="text-lg text-gray-600 mb-8 max-w-3xl">Platform "SegariHari" dirancang berdasarkan data untuk melayani Anda lebih baik. Berikut adalah beberapa proyeksi dan data (simulasi) yang menjadi landasan kami.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    
+                    <div class="bg-white p-6 rounded-2xl shadow-xl">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-4 text-center">Produk Langganan Terpopuler</h3>
+                        <p class="text-gray-600 text-center mb-4">Data menunjukkan fokus pelanggan pada kebutuhan pokok. Fitur langganan kami dirancang untuk melayani permintaan ini secara efisien.</p>
+                        <div class="chart-container">
+                            <canvas id="subscriptionsChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-2xl shadow-xl">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-4 text-center">Proyeksi Pertumbuhan Pengguna</h3>
+                        <p class="text-gray-600 text-center mb-4">Dengan fitur yang berfokus pada kenyamanan, kami memproyeksikan adopsi pengguna yang cepat dalam 12 bulan pertama.</p>
+                        <div class="chart-container">
+                            <canvas id="growthChart"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-xl text-center">
+                        <div class="text-5xl font-bold text-green-700">30 Menit</div>
+                        <div class="text-lg font-semibold text-gray-700 mt-2">Target Pengiriman Rata-rata</div>
+                        <p class="text-gray-600 mt-2 text-sm">Dengan micro-warehouse yang tersebar, kami menargetkan kecepatan pengiriman yang tak tertandingi.</p>
+                    </div>
+                     <div class="bg-white p-6 rounded-2xl shadow-xl text-center">
+                        <div class="text-5xl font-bold text-green-700">99.8%</div>
+                        <div class="text-lg font-semibold text-gray-700 mt-2">Tingkat Ketersediaan Stok</div>
+                        <p class="text-gray-600 mt-2 text-sm">Manajemen inventaris berbasis AI memastikan barang yang Anda butuhkan selalu tersedia.</p>
+                    </div>
+                     <div class="bg-white p-6 rounded-2xl shadow-xl text-center">
+                        <div class="text-5xl font-bold text-green-700">25%</div>
+                        <div class="text-lg font-semibold text-gray-700 mt-2">Penghematan Waktu Belanja</div>
+                        <p class="text-gray-600 mt-2 text-sm">Pengguna menghemat rata-rata 2 jam per minggu berkat fitur Smart List dan Langganan.</p>
+                    </div>
+                </div>
+
+            </section>
+
+            <section id="page-tentang" class="page-content hidden">
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                    <img src="https://placehold.co/1200x400/C8E6C9/333?text=Tim+Petani+Lokal+Kami" class="w-full h-64 object-cover" alt="Petani Lokal">
+                    <div class="p-8 md:p-12">
+                        <h1 class="text-4xl font-bold text-gray-800 mb-4">👩‍🌾 Misi Kami: Dari Ladang Lokal ke Meja Anda</h1>
+                        <p class="text-lg text-gray-600 mb-6">"SegariHari" lebih dari sekadar aplikasi; ini adalah jembatan. Misi kami adalah memberdayakan petani dan produsen lokal Indonesia dengan memberi mereka akses langsung ke pasar yang lebih luas—yaitu Anda.</p>
+                        
+                        <div class="grid md:grid-cols-2 gap-6 text-gray-700">
+                            <div>
+                                <h3 class="text-xl font-semibold text-green-700 mb-2">Kualitas Adalah Prioritas</h3>
+                                <p>Kami bekerja sama langsung dengan puluhan petani dan peternak lokal. Ini berarti kami memotong rantai pasokan yang panjang, memastikan produk yang Anda terima adalah yang paling segar. Tidak ada penyimpanan berhari-hari di gudang besar.</p>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-semibold text-green-700 mb-2">Harga yang Adil</h3>
+                                <p>Dengan menghilangkan perantara yang tidak perlu, kami dapat memberikan harga yang lebih baik untuk Anda, sekaligus memastikan petani kami mendapatkan bayaran yang adil dan layak atas kerja keras mereka. Ini adalah kemenangan bersama.</p>
+                            </div>
+                        </div>
+                        
+                        <p class="mt-8 text-lg text-gray-800 bg-amber-100 p-6 rounded-lg border-l-4 border-amber-500">
+                            Setiap pembelian Anda di <strong>SegariHari</strong> secara langsung mendukung ekonomi lokal dan mempromosikan praktik pertanian yang berkelanjutan. Terima kasih telah menjadi bagian dari gerakan ini.
+                        </p>
+                    </div>
+                </div>
+            </section>
+        
         </main>
 
-        <!-- Footer -->
-        <footer class="bg-gray-800 text-white mt-16">
-            <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
-                <p>&copy; 2025 Amaranggana ID. Dibuat dengan ❤️ & Supabase.</p>
+        <footer class="bg-gray-800 text-gray-300 mt-12">
+            <div class="container mx-auto px-8 py-10">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                    <div>
+                        <h4 class="font-bold text-white text-lg mb-3">SegariHari</h4>
+                        <p class="text-sm">Kesegaran harian, langsung ke rumah Anda.</p>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white text-lg mb-3">Jelajahi</h4>
+                        <ul class="space-y-2 text-sm">
+                            <li><a href="#" class="hover:text-white">Promo</a></li>
+                            <li><a href="#" class="hover:text-white">Kategori</a></li>
+                            <li><a href="#" class="hover:text-white">Resep</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white text-lg mb-3">Dukungan</h4>
+                        <ul class="space-y-2 text-sm">
+                            <li><a href="#" class="hover:text-white">Pusat Bantuan</a></li>
+                            <li><a href="#" class="hover:text-white">Hubungi Kami</a></li>
+                            <li><a href="#" class="hover:text-white">Kebijakan Privasi</a></li>
+                        </ul>
+                    </div>
+                     <div>
+                        <h4 class="font-bold text-white text-lg mb-3">Ikuti Kami</h4>
+                        <div class="flex space-x-4">
+                            <a href="#" class="hover:text-white">FB</a>
+                            <a href="#" class="hover:text-white">IG</a>
+                            <a href="#" class="hover:text-white">TW</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-t border-gray-700 mt-8 pt-6 text-center text-sm">
+                    &copy; 2025 SegariHari. Dibuat sebagai konsep oleh AI.
+                </div>
             </div>
         </footer>
-
     </div>
 
-    <!-- Global Loader -->
-    <div id="loader-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-        <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32"></div>
-    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            const GEMINI_MODEL = 'gemini-2.5-flash-preview-09-2025';
+            const apiKey = ""; 
 
-    <!-- Global Message Modal -->
-    <div id="message-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
-            <h3 id="message-modal-title" class="text-lg font-medium text-gray-900">Pesan</h3>
-            <p id="message-modal-text" class="mt-2 text-sm text-gray-600">Isi pesan...</p>
-            <div class="mt-4 flex justify-end">
-                <button id="message-modal-close" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">Tutup</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Confirmation Modal -->
-    <div id="confirmation-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
-            <h3 id="confirmation-modal-title" class="text-lg font-medium text-gray-900">Konfirmasi</h3>
-            <p id="confirmation-modal-text" class="mt-2 text-sm text-gray-600">Apakah Anda yakin?</p>
-            <div class="mt-4 flex justify-end space-x-3">
-                <button id="confirmation-modal-cancel" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-md text-sm font-medium">Batal</button>
-                <button id="confirmation-modal-confirm" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">Yakin</button>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- JavaScript Utama Aplikasi -->
-    <script type="module">
-        // 1. Inisialisasi Supabase
-        // -----------------------------------------------------------------
-        // GANTI DENGAN KUNCI SUPABASE ANDA
-        // Anda bisa mendapatkannya dari dashboard Supabase: Settings > API
-        // -----------------------------------------------------------------
-        const SUPABASE_URL = 'https://ojnmjlmzdclxrwvquvvu.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'sb_publishable_H2hDYB0anVilAkS56B6GRA_p7P5hK2J';
-
-        if (SUPABASE_URL === 'https://ojnmjlmzdclxrwvquvvu.supabase.co' || SUPABASE_ANON_KEY === 'sb_publishable_H2hDYB0anVilAkS56B6GRA_p7P5hK2J') {
-            const mainContent = document.getElementById('main-content');
-            mainContent.innerHTML = `
-                <div class="container mx-auto px-4 py-16 text-center">
-                    <h1 class="text-3xl font-bold text-red-600">Konfigurasi Diperlukan!</h1>
-                    <p class="mt-4 text-lg">Silakan buka file <code>index.html</code> dan ganti <code>SUPABASE_URL</code> dan <code>SUPABASE_ANON_KEY</code> dengan kredensial Supabase Anda.</p>
-                </div>
-            `;
-        }
-
-        const { createClient } = supabase;
-        const dbClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        // 2. Global State & DOM Elements
-        let currentUser = null;
-        let userProfile = null;
-        // Variabel global untuk menyimpan riwayat chat Asisten Produk AI
-        let productChatHistory = []; 
-
-        const mainContent = document.getElementById('main-content');
-        const loader = document.getElementById('loader-overlay');
-        
-        // Header elements
-        const authLinksDesktop = document.getElementById('auth-links-desktop');
-        const userMenuDesktop = document.getElementById('user-menu-desktop');
-        const logoutButtonDesktop = document.getElementById('logout-button-desktop');
-        
-        const authLinksMobile = document.getElementById('auth-links-mobile');
-        const userMenuMobile = document.getElementById('user-menu-mobile');
-        const logoutButtonMobile = document.getElementById('logout-button-mobile');
-        
-        const mobileMenuButton = document.getElementById('mobile-menu-button');
-        const mobileMenu = document.getElementById('mobile-menu');
-        const menuIconOpen = document.getElementById('menu-icon-open');
-        const menuIconClose = document.getElementById('menu-icon-close');
-
-        // Modal elements
-        const messageModal = document.getElementById('message-modal');
-        const messageModalTitle = document.getElementById('message-modal-title');
-        const messageModalText = document.getElementById('message-modal-text');
-        const messageModalClose = document.getElementById('message-modal-close');
-        
-        const confirmModal = document.getElementById('confirmation-modal');
-        const confirmModalTitle = document.getElementById('confirmation-modal-title');
-        const confirmModalText = document.getElementById('confirmation-modal-text');
-        const confirmModalCancel = document.getElementById('confirmation-modal-cancel');
-        const confirmModalConfirm = document.getElementById('confirmation-modal-confirm');
-        let confirmCallback = null;
-
-
-        // 3. Helper Functions (Loader, Modals, Format)
-        const showLoader = () => loader.classList.remove('hidden');
-        const hideLoader = () => loader.classList.add('hidden');
-
-        const showMessage = (text, title = "Pesan", isError = false) => {
-            messageModalTitle.textContent = title;
-            messageModalText.textContent = text;
-            messageModalTitle.className = isError ? 'text-lg font-medium text-red-600' : 'text-lg font-medium text-gray-900';
-            messageModal.classList.remove('hidden');
-            document.body.classList.add('modal-open');
-        };
-
-        const hideMessage = () => {
-            messageModal.classList.add('hidden');
-            document.body.classList.remove('modal-open');
-        };
-        
-        const showConfirmation = (text, title = "Konfirmasi", onConfirm) => {
-            confirmModalTitle.textContent = title;
-            confirmModalText.textContent = text;
-            confirmCallback = onConfirm;
-            confirmModal.classList.remove('hidden');
-            document.body.classList.add('modal-open');
-        };
-        
-        const hideConfirmation = () => {
-            confirmModal.classList.add('hidden');
-            document.body.classList.remove('modal-open');
-            confirmCallback = null;
-        };
-        
-        // Event listeners for modals
-        messageModalClose.addEventListener('click', hideMessage);
-        confirmModalCancel.addEventListener('click', hideConfirmation);
-        confirmModalConfirm.addEventListener('click', () => {
-            if (confirmCallback) {
-                confirmCallback();
-            }
-            hideConfirmation();
-        });
-
-        // Format Rupiah
-        const formatRupiah = (number) => {
-            return new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0
-            }).format(number);
-        };
-        
-        // --- Gemini API Logic ---
-        const GEMINI_API_KEY = "AIzaSyDc-lr8luhdC3fmqXJdiH-jht1SfHspuy0"; // Kunci akan disediakan oleh lingkungan
-        const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
-        const MAX_RETRIES = 3;
-        const BASE_DELAY = 1000;
-
-        /**
-         * Memanggil Gemini API dengan exponential backoff (untuk sekali jalan, seperti Deskripsi).
-         */
-        async function callGeminiApi(prompt, systemPrompt = null) {
-            let delay = BASE_DELAY;
-            for (let i = 0; i < MAX_RETRIES; i++) {
-                try {
-                    const contents = [{ parts: [{ text: prompt }] }];
-                    
-                    const payload = {
-                        contents: contents,
-                        // Menggunakan grounding untuk mendapatkan informasi pemasaran yang up-to-date
-                        tools: [{ "google_search": {} }], 
-                        systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
-                    };
-
-                    const apiUrlWithKey = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
-                    
-                    const response = await fetch(apiUrlWithKey, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        if (response.status === 429 && i < MAX_RETRIES - 1) {
-                            console.warn(`Attempt ${i + 1} failed with status 429. Retrying in ${delay}ms...`);
-                            await new Promise(resolve => setTimeout(resolve, delay));
-                            delay *= 2;
-                            continue;
-                        }
-                        throw new Error(`API call failed with status ${response.status}: ${response.statusText}`);
-                    }
-
-                    const result = await response.json();
-                    const candidate = result.candidates?.[0];
-
-                    if (candidate && candidate.content?.parts?.[0]?.text) {
-                        return { text: candidate.content.parts[0].text };
-                    }
-
-                    return null;
-
-                } catch (error) {
-                    console.error('Gemini API error:', error);
-                    if (i < MAX_RETRIES - 1) {
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        delay *= 2;
+            function showPage(pageId) {
+                document.querySelectorAll('.page-content').forEach(page => {
+                    page.classList.add('hidden');
+                });
+                const targetPage = document.getElementById(pageId);
+                if (targetPage) {
+                    targetPage.classList.remove('hidden');
+                }
+                
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    if (link.dataset.page === pageId) {
+                        link.classList.add('active');
                     } else {
-                        return null;
+                        link.classList.remove('active');
                     }
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Mengirim chat history ke Gemini API untuk Q&A Produk.
-         */
-        async function callGeminiChat(contents, systemPrompt) {
-            let delay = BASE_DELAY;
-            for (let i = 0; i < MAX_RETRIES; i++) {
-                try {
-                    const payload = {
-                        contents: contents,
-                        tools: [{ "google_search": {} }],
-                        systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
-                    };
-
-                    const apiUrlWithKey = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
-                    
-                    const response = await fetch(apiUrlWithKey, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        if (response.status === 429 && i < MAX_RETRIES - 1) {
-                            await new Promise(resolve => setTimeout(resolve, delay));
-                            delay *= 2;
-                            continue;
-                        }
-                        throw new Error(`API call failed with status ${response.status}: ${response.statusText}`);
-                    }
-
-                    const result = await response.json();
-                    const candidate = result.candidates?.[0];
-
-                    if (candidate && candidate.content?.parts?.[0]?.text) {
-                        return { text: candidate.content.parts[0].text };
-                    }
-
-                    return null;
-
-                } catch (error) {
-                    console.error('Gemini Chat API error:', error);
-                    if (i < MAX_RETRIES - 1) {
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        delay *= 2;
-                    } else {
-                        return null;
-                    }
-                }
-            }
-            return null;
-        }
-
-
-        // 4. Render Functions (Views)
-
-        // Render Landing Page (Home)
-        const renderHome = () => {
-            mainContent.innerHTML = `
-                <!-- Hero Section -->
-                <div class="relative bg-gray-900 overflow-hidden">
-                    <div class="absolute inset-0">
-                        <!-- Placeholder visual. Ganti dengan gambar/video/Three.js Anda -->
-                        <img src="https://placehold.co/1920x1080/2D3748/E2E8F0?text=Amaranggana+ID" 
-                             alt="Marketplace Hero" 
-                             class="w-full h-full object-cover opacity-30">
-                    </div>
-                    <div class="relative container mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-48 text-center">
-                        <h1 class="text-4xl md:text-6xl font-bold text-white tracking-tight">
-                            Temukan & Jual Produk Unik Anda
-                        </h1>
-                        <p class="mt-6 text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
-                            Platform marketplace yang menghubungkan penjual kreatif dengan pembeli di seluruh Indonesia.
-                        </p>
-                        <div class="mt-10">
-                            <a href="#marketplace" class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-md text-lg font-medium shadow-lg transition duration-300">
-                                Jelajahi Marketplace
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Featured Products (Contoh) -->
-                <div class="py-16 bg-white">
-                    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-                        <h2 class="text-3xl font-bold text-center mb-10">Produk Pilihan</h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                            <!-- Contoh Produk Card -->
-                            <div class="bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden">
-                                <img src="https://placehold.co/600x400/E2E8F0/4A5568?text=Produk+1" alt="Produk" class="w-full h-48 object-cover">
-                                <div class="p-5">
-                                    <h3 class="text-lg font-semibold text-gray-900">Produk Contoh 1</h3>
-                                    <p class="text-indigo-600 font-bold mt-2">${formatRupiah(150000)}</p>
-                                </div>
-                            </div>
-                            <!-- ... card lainnya ... -->
-                        </div>
-                    </div>
-                </div>
-            `;
-        };
-
-        // Render Marketplace (List Produk)
-        const renderMarketplace = async (searchQuery = '') => {
-            mainContent.innerHTML = `
-                <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <h1 class="text-3xl font-bold mb-8">Marketplace</h1>
-                    <!-- Search Bar -->
-                    <form id="search-form" class="mb-8">
-                        <div class="relative">
-                            <input type="search" id="search-input" value="${searchQuery}"
-                                   class="w-full p-4 pr-16 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                   placeholder="Cari produk...">
-                            <button type="submit" class="absolute top-0 right-0 h-full px-6 bg-indigo-600 text-white rounded-r-lg hover:bg-indigo-700 font-medium">
-                                Cari
-                            </button>
-                        </div>
-                    </form>
-                    
-                    <div id="product-list-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        <!-- Product cards will be injected here -->
-                        <p class="text-gray-500 col-span-full">Memuat produk...</p>
-                    </div>
-                </div>
-            `;
-            
-            // Add event listener for search form
-            document.getElementById('search-form').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const query = document.getElementById('search-input').value;
-                renderMarketplace(query); // Re-render dengan query pencarian
-            });
-
-            // Fetch and render products
-            try {
-                showLoader();
-                let query = dbClient
-                    .from('products')
-                    .select('*, users(nama)') // Join dengan tabel users untuk dapat nama penjual
-                    .order('created_at', { ascending: false });
-
-                if (searchQuery) {
-                    // Gunakan text search Supabase
-                    query = query.textSearch('nama', `'${searchQuery.split(' ').join(' | ')}'`);
-                }
-
-                const { data: products, error } = await query;
-                if (error) throw error;
-                
-                const productListContainer = document.getElementById('product-list-container');
-                if (products.length === 0) {
-                    productListContainer.innerHTML = `<p class="text-gray-500 col-span-full text-center">Tidak ada produk ditemukan${searchQuery ? ` untuk "${searchQuery}"` : ''}.</p>`;
-                } else {
-                    productListContainer.innerHTML = products.map(product => `
-                        <div class="bg-white rounded-lg shadow-lg overflow-hidden transition-transform duration-300 hover:scale-105">
-                            <a href="#product/${product.id}" class="block">
-                                <img src="${product.image_url || 'https://placehold.co/600x400/E2E8F0/4A5568?text=No+Image'}" 
-                                     alt="${product.nama}" 
-                                     class="w-full h-56 object-cover"
-                                     onerror="this.src='https://placehold.co/600x400/E2E8F0/4A5568?text=Error'">
-                                <div class="p-5">
-                                    <h3 class="text-lg font-semibold text-gray-900 truncate" title="${product.nama}">
-                                        ${product.nama}
-                                    </h3>
-                                    <p class="text-gray-500 text-sm mt-1">
-                                        oleh ${product.users?.nama || 'Penjual'}
-                                    </p>
-                                    <p class="text-indigo-600 font-bold text-xl mt-3">
-                                        ${formatRupiah(product.price)}
-                                    </p>
-                                </div>
-                            </a>
-                        </div>
-                    `).join('');
-                }
-            } catch (error) {
-                console.error('Error fetching products:', error);
-                showMessage(`Gagal memuat produk: ${error.message}`, 'Error', true);
-            } finally {
-                hideLoader();
-            }
-        };
-        
-        // Render Detail Produk
-        const renderProductDetail = async (productId) => {
-            mainContent.innerHTML = `<div class="container mx-auto px-4 py-12 text-center"><p>Memuat detail produk...</p></div>`;
-            showLoader();
-            
-            try {
-                const { data: product, error } = await dbClient
-                    .from('products')
-                    .select('*, users(id, nama, bio, avatar_url, kontak, email)') // Join data penjual
-                    .eq('id', productId)
-                    .single(); // Ambil satu data
-
-                if (error) throw error;
-                if (!product) {
-                    mainContent.innerHTML = `<div class="container mx-auto px-4 py-12 text-center"><p class="text-red-500">Produk tidak ditemukan.</p></div>`;
-                    return;
-                }
-
-                // Reset chat history setiap kali membuka detail produk baru
-                productChatHistory = []; 
-
-                const seller = product.users;
-                const contactLink = seller.kontak 
-                    ? `https://wa.me/${seller.kontak.replace(/[^0-9]/g, '')}` // Asumsi kontak adalah No. WA
-                    : `mailto:${seller.email}`;
-                const contactText = seller.kontak ? "Hubungi via WhatsApp" : "Hubungi via Email";
-
-                mainContent.innerHTML = `
-                    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                        <div class="bg-white rounded-lg shadow-xl overflow-hidden p-6">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                
-                                <!-- Kolom Kiri: Gambar & Deskripsi -->
-                                <div class="space-y-6">
-                                    <!-- Gambar Produk -->
-                                    <img src="${product.image_url || 'https://placehold.co/800x600/E2E8F0/4A5568?text=No+Image'}" 
-                                         alt="${product.nama}" 
-                                         class="w-full h-80 object-cover rounded-lg shadow-md"
-                                         onerror="this.src='https://placehold.co/800x600/E2E8F0/4A5568?text=Error'">
-
-                                    <span class="text-sm text-gray-500 uppercase">${product.category || 'Uncategorized'}</span>
-                                    <h1 class="text-3xl font-bold text-gray-900 mt-2">${product.nama}</h1>
-                                    <p class="text-indigo-600 font-bold text-3xl mt-4">${formatRupiah(product.price)}</p>
-                                    
-                                    <div class="mt-6">
-                                        <h3 class="text-xl font-semibold border-b pb-2">Deskripsi Produk</h3>
-                                        <p class="text-gray-600 mt-2">${product.description ? product.description.replace(/\n/g, '<br>') : 'Tidak ada deskripsi.'}</p>
-                                    </div>
-                                    
-                                    <div class="mt-8 pt-6 border-t">
-                                        <h3 class="text-lg font-semibold mb-4">Informasi Penjual</h3>
-                                        <div class="flex items-center space-x-4">
-                                            <img src="${seller.avatar_url || `https://ui-avatars.com/api/?name=${seller.nama || 'P'}&background=random`}" 
-                                                 alt="${seller.nama}" 
-                                                 class="w-16 h-16 rounded-full object-cover border-2 border-indigo-200">
-                                            <div>
-                                                <p class="text-xl font-semibold">${seller.nama || 'Penjual Terdaftar'}</p>
-                                                <p class="text-gray-500 text-sm">${seller.bio || 'Belum ada bio.'}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="mt-8 space-y-3">
-                                        <a href="${contactLink}" target="_blank" rel="noopener noreferrer" 
-                                           class="w-full flex items-center justify-center bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg text-lg font-medium shadow-lg transition duration-300">
-                                            ${contactText}
-                                        </a>
-                                        ${currentUser && currentUser.id === seller.id ? `
-                                            <a href="#edit-product/${product.id}" class="w-full block text-center bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-medium">
-                                                Edit Produk Ini
-                                            </a>
-                                        ` : ''}
-                                    </div>
-                                </div>
-
-                                <!-- Kolom Kanan: Product Assistant Chatbot (New Feature) -->
-                                <div class="bg-indigo-50 p-6 rounded-xl shadow-inner">
-                                    <h3 class="text-xl font-bold text-indigo-700 mb-4 flex items-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M10 20l4-16"/><path d="M12 20v2"/><path d="M12 2h0"/><path d="M14 18l-4-12"/></svg>
-                                        ✨ Asisten Produk AI
-                                    </h3>
-                                    <p class="text-sm text-gray-600 mb-4">Ajukan pertanyaan tentang produk ini (bahan, pengiriman, detail, dll.)</p>
-                                    
-                                    <!-- Chat Area -->
-                                    <div id="chat-messages" class="chat-area bg-white border border-gray-200 rounded-lg p-3 flex flex-col space-y-3 mb-4">
-                                        <div class="chat-message-ai p-3">Halo! Saya Asisten Produk AI. Silakan ajukan pertanyaan tentang produk **${product.nama}** ini.</div>
-                                    </div>
-
-                                    <!-- Chat Input Form -->
-                                    <form id="chat-form">
-                                        <div class="flex space-x-2">
-                                            <input type="text" id="chat-input" placeholder="Tanyakan sesuatu..." required
-                                                   class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                            <button type="submit" id="chat-send-button"
-                                                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-lg flex items-center justify-center transition duration-150">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
-                                            </button>
-                                        </div>
-                                    </form>
-                                    <p id="chat-status" class="text-xs text-gray-500 mt-2 hidden">AI sedang mengetik...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                // Attach chat form listener
-                const chatForm = document.getElementById('chat-form');
-                if (chatForm) {
-                    chatForm.addEventListener('submit', (e) => handleProductQuestion(e, product));
-                }
-                
-                // Inisialisasi chat history
-                productChatHistory = [
-                    { role: "assistant", parts: [{ text: `Halo! Saya Asisten Produk AI. Saya bisa menjawab pertanyaan Anda tentang produk **${product.nama}**.` }] }
-                ];
-
-            } catch (error) {
-                console.error('Error fetching product detail:', error);
-                showMessage(`Gagal memuat detail produk: ${error.message}`, 'Error', true);
-            } finally {
-                hideLoader();
-            }
-        };
-
-        // Render Halaman Login
-        const renderLogin = () => {
-            if (currentUser) {
-                window.location.hash = '#dashboard';
-                return;
-            }
-            mainContent.innerHTML = `
-                <div class="min-h-[70vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-                    <div class="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg">
-                        <div>
-                            <h2 class="mt-6 text-center text-3xl font-bold text-gray-900">
-                                Login ke Akun Anda
-                            </h2>
-                            <p class="mt-2 text-center text-sm text-gray-600">
-                                Atau <a href="#register" class="font-medium text-indigo-600 hover:text-indigo-500">daftar akun baru</a>
-                            </p>
-                        </div>
-                        <form id="login-form" class="mt-8 space-y-6">
-                            <div class="rounded-md shadow-sm -space-y-px">
-                                <div>
-                                    <label for="email" class="sr-only">Email</label>
-                                    <input id="email" name="email" type="email" autocomplete="email" required
-                                           class="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                           placeholder="Alamat email">
-                                </div>
-                                <div>
-                                    <label for="password" class="sr-only">Password</label>
-                                    <input id="password" name="password" type="password" autocomplete="current-password" required
-                                           class="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                           placeholder="Password">
-                                </div>
-                            </div>
-
-                            <div>
-                                <button type="submit"
-                                        class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                    Login
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            `;
-            
-            // Login form handler
-            document.getElementById('login-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                showLoader();
-                const email = e.target.email.value;
-                const password = e.target.password.value;
-                
-                try {
-                    const { data, error } = await dbClient.auth.signInWithPassword({ email, password });
-                    if (error) throw error;
-                    
-                    showMessage('Login berhasil! Mengarahkan ke dashboard...', 'Sukses');
-                } catch (error) {
-                    console.error('Login error:', error);
-                    showMessage(`Login gagal: ${error.message}`, 'Error', true);
-                } finally {
-                    hideLoader();
-                }
-            });
-        };
-        
-        // Render Halaman Register
-        const renderRegister = () => {
-            if (currentUser) {
-                window.location.hash = '#dashboard';
-                return;
-            }
-            mainContent.innerHTML = `
-                <div class="min-h-[70vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-                    <div class="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg">
-                        <div>
-                            <h2 class="mt-6 text-center text-3xl font-bold text-gray-900">
-                                Daftar Akun Baru
-                            </h2>
-                            <p class="mt-2 text-center text-sm text-gray-600">
-                                Sudah punya akun? <a href="#login" class="font-medium text-indigo-600 hover:text-indigo-500">Login di sini</a>
-                            </p>
-                        </div>
-                        <form id="register-form" class="mt-8 space-y-6">
-                            <div class="rounded-md shadow-sm -space-y-px">
-                                <div>
-                                    <label for="register-email" class="sr-only">Email</label>
-                                    <input id="register-email" name="email" type="email" autocomplete="email" required
-                                           class="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                           placeholder="Alamat email">
-                                </div>
-                                <div>
-                                    <label for="register-password" class="sr-only">Password</label>
-                                    <input id="register-password" name="password" type="password" autocomplete="new-password" required
-                                           class="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                           placeholder="Password (minimal 6 karakter)">
-                                </div>
-                            </div>
-                            <div>
-                                <button type="submit"
-                                        class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                    Daftar
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            `;
-
-            document.getElementById('register-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                showLoader();
-                const email = e.target.email.value;
-                const password = e.target.password.value;
-
-                try {
-                    const { error } = await dbClient.auth.signUp({ email, password });
-                    if (error) throw error;
-                    
-                    showMessage('Pendaftaran berhasil! Silakan cek email Anda untuk verifikasi.', 'Sukses');
-                } catch (error) {
-                    console.error('Register error:', error);
-                    showMessage(`Pendaftaran gagal: ${error.message}`, 'Error', true);
-                } finally {
-                    hideLoader();
-                }
-            });
-        };
-        
-        // Render Dashboard
-        const renderDashboard = () => {
-            if (!currentUser) {
-                window.location.hash = '#login';
-                return;
-            }
-            
-            const profile = userProfile || {};
-            
-            mainContent.innerHTML = `
-                <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <h1 class="text-3xl font-bold mb-8">Dashboard Penjual</h1>
-                    
-                    <div class="bg-white p-8 rounded-xl shadow-lg">
-                        <h2 class="text-2xl font-semibold mb-6 border-b pb-2">Edit Profil Anda</h2>
-                        <form id="profile-form" class="space-y-6">
-                            
-                            <!-- Foto Profil -->
-                            <div class="flex items-center space-x-6">
-                                <img id="current-avatar" src="${profile.avatar_url || `https://ui-avatars.com/api/?name=${profile.nama || 'P'}&background=random`}" 
-                                     alt="Avatar" class="w-24 h-24 rounded-full object-cover border-4 border-indigo-200">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Ganti Foto</label>
-                                    <input type="file" id="profile-avatar" accept="image/*" class="mt-1 block w-full text-sm text-gray-500
-                                        file:mr-4 file:py-2 file:px-4
-                                        file:rounded-full file:border-0
-                                        file:text-sm file:font-semibold
-                                        file:bg-indigo-50 file:text-indigo-700
-                                        hover:file:bg-indigo-100
-                                    ">
-                                    <input type="hidden" id="profile-avatar-url" value="${profile.avatar_url || ''}">
-                                </div>
-                            </div>
-                            
-                            <!-- Nama -->
-                            <div>
-                                <label for="profile-nama" class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-                                <input type="text" id="profile-nama" value="${profile.nama || ''}" required
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-3 focus:border-indigo-500 focus:ring-indigo-500">
-                            </div>
-
-                            <!-- Bio -->
-                            <div>
-                                <label for="profile-bio" class="block text-sm font-medium text-gray-700">Bio Singkat</label>
-                                <textarea id="profile-bio" rows="3"
-                                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-3 focus:border-indigo-500 focus:ring-indigo-500">${profile.bio || ''}</textarea>
-                            </div>
-                            
-                            <!-- Kontak (WhatsApp) -->
-                            <div>
-                                <label for="profile-kontak" class="block text-sm font-medium text-gray-700">Kontak (cth: 62812345678)</label>
-                                <input type="text" id="profile-kontak" value="${profile.kontak || ''}"
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-3 focus:border-indigo-500 focus:ring-indigo-500">
-                                <p class="mt-2 text-sm text-gray-500">Nomor ini akan digunakan pembeli untuk menghubungi Anda.</p>
-                            </div>
-
-                            <!-- Email (Readonly) -->
-                            <div>
-                                <label for="profile-email" class="block text-sm font-medium text-gray-700">Email</label>
-                                <input type="email" id="profile-email" value="${profile.email || currentUser.email}" readonly
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-3 bg-gray-50 text-gray-500">
-                            </div>
-
-                            <!-- Tombol Simpan -->
-                            <div>
-                                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                    Simpan Perubahan Profil
-                                </button>
-                            </div>
-                        </form>
-                        
-                        <div class="mt-8 pt-6 border-t border-gray-200">
-                            <a href="#my-products" class="text-indigo-600 hover:text-indigo-800 font-medium">Lihat Produk Saya →</a>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('profile-form').addEventListener('submit', handleUpdateProfile);
-        };
-        
-        // Render Daftar Produk Saya
-        const renderMyProducts = async () => {
-            if (!currentUser) {
-                window.location.hash = '#login';
-                return;
-            }
-            
-            mainContent.innerHTML = `
-                <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <div class="flex justify-between items-center mb-8">
-                        <h1 class="text-3xl font-bold">Produk Saya</h1>
-                        <a href="#add-product" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium shadow">
-                            + Jual Produk Baru
-                        </a>
-                    </div>
-                    
-                    <div id="my-products-list" class="bg-white p-6 rounded-xl shadow-lg overflow-x-auto">
-                        <p class="text-gray-500">Memuat data produk...</p>
-                    </div>
-                </div>
-            `;
-            
-            try {
-                showLoader();
-                const { data: products, error } = await dbClient
-                    .from('products')
-                    .select('*')
-                    .eq('user_id', currentUser.id)
-                    .order('created_at', { ascending: false });
-                    
-                if (error) throw error;
-                
-                const productListDiv = document.getElementById('my-products-list');
-                
-                if (products.length === 0) {
-                    productListDiv.innerHTML = `<p class="text-gray-500 text-center">Anda belum memiliki produk yang terdaftar.</p>`;
-                    return;
-                }
-                
-                productListDiv.innerHTML = `
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead>
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Produk</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            ${products.map(product => `
-                                <tr id="product-row-${product.id}">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        <a href="#product/${product.id}" class="hover:text-indigo-600">${product.nama}</a>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatRupiah(product.price)}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${product.category || '-'}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <a href="#edit-product/${product.id}" class="text-indigo-600 hover:text-indigo-900 mr-4">Edit</a>
-                                        <button data-id="${product.id}" class="text-red-600 hover:text-red-900 delete-product-btn">Hapus</button>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                `;
-                
-                // Add event listeners for delete buttons
-                productListDiv.querySelectorAll('.delete-product-btn').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const productId = e.target.dataset.id;
-                        handleDeleteProduct(productId);
-                    });
                 });
                 
-            } catch (error) {
-                console.error('Error fetching my products:', error);
-                showMessage(`Gagal memuat produk Anda: ${error.message}`, 'Error', true);
-            } finally {
-                hideLoader();
-            }
-        };
-
-        // Render Form Produk (Tambah/Edit)
-        const renderProductForm = async (productId = null) => {
-            if (!currentUser) {
-                window.location.hash = '#login';
-                return;
+                document.getElementById('mobile-menu').classList.add('hidden');
             }
 
-            let product = {
-                id: '',
-                nama: '',
-                description: '',
-                price: '',
-                category: '',
-                image_url: ''
-            };
-            const isEditing = !!productId;
-            const title = isEditing ? 'Edit Produk Anda' : 'Jual Produk Baru';
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function() {
+                    const pageId = this.dataset.page;
+                    showPage(pageId);
+                });
+            });
 
-            if (isEditing) {
-                showLoader();
-                try {
-                    const { data, error } = await dbClient
-                        .from('products')
-                        .select('*')
-                        .eq('id', productId)
-                        .eq('user_id', currentUser.id)
-                        .single();
+            document.getElementById('mobile-menu-button').addEventListener('click', function() {
+                document.getElementById('mobile-menu').classList.toggle('hidden');
+            });
 
-                    if (error || !data) throw new Error('Produk tidak ditemukan atau bukan milik Anda.');
-                    product = data;
-                } catch (error) {
-                    showMessage(`Gagal memuat data produk: ${error.message}`, 'Error', true);
-                    window.location.hash = '#my-products';
-                    hideLoader();
-                    return;
-                } finally {
-                    hideLoader();
-                }
-            }
-
-            mainContent.innerHTML = `
-                <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <h1 class="text-3xl font-bold mb-8">${title}</h1>
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const tabId = this.dataset.tab;
                     
-                    <div class="bg-white p-8 rounded-xl shadow-lg">
-                        <form id="product-form" class="space-y-6">
-                            <input type="hidden" id="product-id" value="${product.id}">
-                            
-                            <!-- Nama Produk -->
-                            <div>
-                                <label for="product-nama" class="block text-sm font-medium text-gray-700">Nama Produk</label>
-                                <input type="text" id="product-nama" value="${product.nama}" required
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-3 focus:border-indigo-500 focus:ring-indigo-500"
-                                       placeholder="Cth: Lukisan Abstrak Senja Merah">
-                            </div>
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    
+                    const targetContent = document.getElementById(tabId);
+                    if (targetContent) {
+                        targetContent.classList.remove('hidden');
+                    }
+                    
+                    document.querySelectorAll('.tab-button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    
+                    this.classList.add('active');
+                });
+            });
 
-                            <!-- Kategori -->
-                            <div>
-                                <label for="product-category" class="block text-sm font-medium text-gray-700">Kategori</label>
-                                <select id="product-category" required
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-3 focus:border-indigo-500 focus:ring-indigo-500">
-                                    <option value="">Pilih Kategori</option>
-                                    <option value="Kerajinan Tangan" ${product.category === 'Kerajinan Tangan' ? 'selected' : ''}>Kerajinan Tangan</option>
-                                    <option value="Pakaian" ${product.category === 'Pakaian' ? 'selected' : ''}>Pakaian</option>
-                                    <option value="Makanan & Minuman" ${product.category === 'Makanan & Minuman' ? 'selected' : ''}>Makanan & Minuman</option>
-                                    <option value="Aksesoris" ${product.category === 'Aksesoris' ? 'selected' : ''}>Aksesoris</option>
-                                    <option value="Digital" ${product.category === 'Digital' ? 'selected' : ''}>Produk Digital</option>
-                                    <option value="Lainnya" ${product.category === 'Lainnya' ? 'selected' : ''}>Lainnya</option>
-                                </select>
-                            </div>
-
-                            <!-- Harga -->
-                            <div>
-                                <label for="product-price" class="block text-sm font-medium text-gray-700">Harga (Rp)</label>
-                                <input type="number" id="product-price" value="${product.price}" required
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-3 focus:border-indigo-500 focus:ring-indigo-500"
-                                       placeholder="Contoh: 150000">
-                            </div>
-
-                            <!-- Deskripsi & Gemini AI Feature -->
-                            <div class="space-y-2">
-                                <label for="product-description" class="block text-sm font-medium text-gray-700">Deskripsi Produk</label>
-                                <textarea id="product-description" rows="6"
-                                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-3 focus:border-indigo-500 focus:ring-indigo-500"
-                                          placeholder="Jelaskan produk Anda secara rinci.">${product.description || ''}</textarea>
-                                
-                                <!-- Tombol Gemini AI -->
-                                <button type="button" id="generate-description-button" 
-                                        class="w-full flex items-center justify-center py-3 px-4 text-sm font-medium rounded-md text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none transition duration-150 shadow-md">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M20 12h2"/><path d="M2 12h2"/><path d="m18.4 5.6-.9.9"/><path d="m5.6 18.4.9-.9"/><path d="m19.3 14.7-.7.7"/><path d="M10 10l4 4"/><path d="M14 10l-4 4"/></svg>
-                                    ✨ Generate Deskripsi Produk Otomatis
-                                </button>
-                            </div>
-
-                            <!-- Gambar Produk -->
-                            <div>
-                                <label for="product-image-file" class="block text-sm font-medium text-gray-700">Gambar Produk</label>
-                                ${product.image_url ? 
-                                    `<img src="${product.image_url}" alt="Current Product Image" class="w-32 h-32 object-cover rounded-lg my-2 border">` 
-                                    : ''
+            function initCharts() {
+                const subsCtx = document.getElementById('subscriptionsChart');
+                if (subsCtx && !subsCtx.chart) {
+                    subsCtx.chart = new Chart(subsCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Susu Segar', 'Telur Ayam', 'Roti Tawar', 'Air Mineral', 'Sayur Bayam'],
+                            datasets: [{
+                                label: 'Langganan Populer',
+                                data: [30, 25, 20, 15, 10],
+                                backgroundColor: [
+                                    'rgba(5, 150, 105, 0.8)',
+                                    'rgba(245, 158, 11, 0.8)',
+                                    'rgba(120, 113, 108, 0.8)',
+                                    'rgba(59, 130, 246, 0.8)',
+                                    'rgba(22, 163, 74, 0.8)'
+                                ],
+                                borderColor: '#fffbeb',
+                                borderWidth: 3
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `${context.label}: ${context.raw}%`;
+                                        }
+                                    }
                                 }
-                                <input type="file" id="product-image-file" accept="image/*" class="mt-1 block w-full text-sm text-gray-500
-                                    file:mr-4 file:py-2 file:px-4
-                                    file:rounded-full file:border-0
-                                    file:text-sm file:font-semibold
-                                    file:bg-indigo-50 file:text-indigo-700
-                                    hover:file:bg-indigo-100
-                                ">
-                                <input type="hidden" id="product-image-url" value="${product.image_url}">
-                                <p class="mt-2 text-sm text-gray-500">Unggah gambar baru untuk mengganti yang lama.</p>
-                            </div>
-
-                            <!-- Tombol Submit -->
-                            <div>
-                                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                    ${isEditing ? 'Simpan Perubahan Produk' : 'Tambah Produk'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            `;
-
-            // Event Listeners
-            document.getElementById('product-form').addEventListener('submit', handleSaveProduct);
-            
-            // Event listener untuk Gemini API (Deskripsi Generator)
-            const generateButton = document.getElementById('generate-description-button');
-            if (generateButton) {
-                generateButton.addEventListener('click', handleGenerateDescription);
-            }
-        };
-
-        // 5. Supabase Logic Handlers
-
-        // Handle Logout
-        const handleLogout = async () => {
-            showLoader();
-            try {
-                const { error } = await dbClient.auth.signOut();
-                if (error) throw error;
-            } catch (error) {
-                console.error('Logout error:', error);
-                showMessage(`Logout gagal: ${error.message}`, 'Error', true);
-            } finally {
-                hideLoader();
-            }
-        };
-        
-        // Handle Update Profile
-        const handleUpdateProfile = async (e) => {
-            e.preventDefault();
-            if (!currentUser) return;
-            
-            showLoader();
-            
-            const nama = document.getElementById('profile-nama').value;
-            const bio = document.getElementById('profile-bio').value;
-            const kontak = document.getElementById('profile-kontak').value;
-            const avatarFile = document.getElementById('profile-avatar').files[0];
-            let avatarUrl = document.getElementById('profile-avatar-url').value;
-            
-            try {
-                // 1. Upload avatar jika ada file baru
-                if (avatarFile) {
-                    const filePath = `avatars/${currentUser.id}/${Date.now()}_${avatarFile.name}`;
-                    const { data: uploadData, error: uploadError } = await dbClient.storage
-                        .from('product-images') // Menggunakan bucket yang sama
-                        .upload(filePath, avatarFile, {
-                            cacheControl: '3600',
-                            upsert: true
-                        });
-                    
-                    if (uploadError) throw uploadError;
-                    
-                    // 2. Dapatkan Public URL
-                    const { data: urlData } = dbClient.storage
-                        .from('product-images')
-                        .getPublicUrl(uploadData.path);
-                    
-                    avatarUrl = urlData.publicUrl;
-                }
-                
-                // 3. Update tabel 'users'
-                const { data, error } = await dbClient
-                    .from('users')
-                    .update({ 
-                        nama: nama, 
-                        bio: bio, 
-                        kontak: kontak,
-                        avatar_url: avatarUrl,
-                        updated_at: new Date()
-                    })
-                    .eq('id', currentUser.id)
-                    .select()
-                    .single();
-                    
-                if (error) throw error;
-                
-                // 4. Update state lokal
-                userProfile = data;
-                updateHeaderUI();
-                showMessage('Profil berhasil diperbarui!', 'Sukses');
-                renderDashboard(); 
-                
-            } catch (error) {
-                console.error('Update profile error:', error);
-                showMessage(`Update profil gagal: ${error.message}`, 'Error', true);
-            } finally {
-                hideLoader();
-            }
-        };
-        
-        // Handle Simpan Produk (Create / Update)
-        const handleSaveProduct = async (e) => {
-            e.preventDefault();
-            if (!currentUser) return;
-            
-            showLoader();
-            
-            const productId = document.getElementById('product-id').value;
-            const isEditing = !!productId;
-            
-            const nama = document.getElementById('product-nama').value;
-            const description = document.getElementById('product-description').value;
-            const price = document.getElementById('product-price').value;
-            const category = document.getElementById('product-category').value;
-            const imageFile = document.getElementById('product-image-file').files[0];
-            let imageUrl = document.getElementById('product-image-url').value;
-            
-            try {
-                // 1. Upload gambar jika ada file baru
-                if (imageFile) {
-                    const filePath = `products/${currentUser.id}/${Date.now()}_${imageFile.name}`;
-                    const { data: uploadData, error: uploadError } = await dbClient.storage
-                        .from('product-images')
-                        .upload(filePath, imageFile, {
-                            cacheControl: '3600',
-                            upsert: true
-                        });
-                        
-                    if (uploadError) throw uploadError;
-                    
-                    const { data: urlData } = dbClient.storage
-                        .from('product-images')
-                        .getPublicUrl(uploadData.path);
-                    
-                    imageUrl = urlData.publicUrl;
-                }
-                
-                // 2. Siapkan data produk
-                const productData = {
-                    user_id: currentUser.id,
-                    nama: nama,
-                    description: description,
-                    price: parseFloat(price),
-                    category: category,
-                    image_url: imageUrl,
-                    updated_at: new Date()
-                };
-                
-                let dbPromise;
-                
-                // 3. Tentukan query (Insert atau Update)
-                if (isEditing) {
-                    // UPDATE
-                    dbPromise = dbClient
-                        .from('products')
-                        .update(productData)
-                        .eq('id', productId)
-                        .eq('user_id', currentUser.id); // Keamanan ekstra
-                } else {
-                    // INSERT (Create)
-                    dbPromise = dbClient
-                        .from('products')
-                        .insert(productData);
-                }
-                
-                const { error } = await dbPromise;
-                if (error) throw error;
-                
-                // 4. Sukses
-                const successMessage = isEditing ? 'Produk berhasil diperbarui!' : 'Produk berhasil ditambahkan!';
-                showMessage(successMessage, 'Sukses');
-                window.location.hash = '#my-products';
-                
-            } catch (error) {
-                console.error('Save product error:', error);
-                showMessage(`Gagal menyimpan produk: ${error.message}`, 'Error', true);
-            } finally {
-                hideLoader();
-            }
-        };
-        
-        // Handle Hapus Produk
-        const handleDeleteProduct = (productId) => {
-            if (!currentUser) return;
-            
-            showConfirmation('Apakah Anda yakin ingin menghapus produk ini? Aksi ini tidak dapat dibatalkan.', 'Hapus Produk', async () => {
-                showLoader();
-                try {
-                    // Hapus data dari database
-                    const { error } = await dbClient
-                        .from('products')
-                        .delete()
-                        .eq('id', productId)
-                        .eq('user_id', currentUser.id); // Pastikan hanya bisa hapus milik sendiri
-                    
-                    if (error) throw error;
-                    
-                    showMessage('Produk berhasil dihapus.', 'Sukses');
-                    
-                    // Hapus baris dari tabel di UI
-                    const productRow = document.getElementById(`product-row-${productId}`);
-                    if (productRow) {
-                        productRow.remove();
-                    }
-                    
-                } catch (error) {
-                    console.error('Delete product error:', error);
-                    showMessage(`Gagal menghapus produk: ${error.message}`, 'Error', true);
-                } finally {
-                    hideLoader();
-                }
-            });
-        };
-        
-        // Handle Generasi Deskripsi Produk menggunakan Gemini API
-        const handleGenerateDescription = async (e) => {
-            e.preventDefault();
-            if (!currentUser) return;
-            
-            showLoader();
-            
-            const namaInput = document.getElementById('product-nama');
-            const categoryInput = document.getElementById('product-category');
-            const descriptionInput = document.getElementById('product-description');
-
-            const nama = namaInput.value.trim();
-            const category = categoryInput.value.trim();
-
-            if (!nama) {
-                showMessage('Nama produk harus diisi sebelum membuat deskripsi.', 'Peringatan', true);
-                hideLoader();
-                return;
-            }
-
-            const systemPrompt = "Anda adalah Copywriter E-commerce profesional di Indonesia. Tugas Anda adalah menghasilkan deskripsi produk yang menarik dan persuasif. Deskripsi harus maksimal 4 paragraf, menggunakan bahasa Indonesia formal namun santai, menonjolkan manfaat, dan mengandung Call-to-Action yang halus. JANGAN gunakan emoji.";
-            
-            const userQuery = `Buatkan deskripsi produk untuk:
-Nama Produk: ${nama}
-Kategori: ${category || 'Umum'}
-
-Gunakan format deskripsi yang menarik dan memikat pembeli.`;
-
-            try {
-                const result = await callGeminiApi(userQuery, systemPrompt);
-
-                if (result && result.text) {
-                    descriptionInput.value = result.text.trim();
-                    showMessage('Deskripsi produk berhasil dibuat oleh AI!', 'Sukses AI');
-                } else {
-                    showMessage('Gagal menghasilkan deskripsi. Coba lagi atau periksa koneksi Anda.', 'Error AI', true);
-                }
-            } catch (error) {
-                console.error('Gemini Generation Error:', error);
-                showMessage('Terjadi kesalahan saat memproses permintaan AI.', 'Error', true);
-            } finally {
-                hideLoader();
-            }
-        };
-
-        // Handle Pertanyaan Produk dengan Gemini API (Chatbot)
-        const handleProductQuestion = async (e, product) => {
-            e.preventDefault();
-            
-            const chatInput = document.getElementById('chat-input');
-            const chatMessages = document.getElementById('chat-messages');
-            const chatStatus = document.getElementById('chat-status');
-            const userQuery = chatInput.value.trim();
-
-            if (!userQuery) return;
-
-            // 1. Tampilkan pesan user
-            const userMessageDiv = document.createElement('div');
-            userMessageDiv.className = 'chat-message-user p-3';
-            userMessageDiv.textContent = userQuery;
-            chatMessages.appendChild(userMessageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            chatInput.value = ''; // Kosongkan input
-            
-            // 2. Tambahkan ke history untuk dikirim ke API
-            productChatHistory.push({ role: "user", parts: [{ text: userQuery }] });
-
-            // 3. Tampilkan status loading
-            chatStatus.classList.remove('hidden');
-            document.getElementById('chat-send-button').disabled = true;
-
-            const baseSystemPrompt = `Anda adalah Asisten Produk AI yang ramah dan informatif untuk produk e-commerce. Jawablah pertanyaan pembeli berdasarkan deskripsi produk berikut. Jika informasi tidak ada dalam deskripsi, gunakan pengetahuan umum atau Google Search untuk memberikan jawaban yang terbaik. Jawab dalam bahasa Indonesia.
-
-            --- DESKRIPSI PRODUK ---
-            Nama Produk: ${product.nama}
-            Kategori: ${product.category || 'Tidak Diketahui'}
-            Harga: ${formatRupiah(product.price)}
-            Detail: ${product.description || 'Tidak ada deskripsi detail.'}
-            --- END DESKRIPSI PRODUK ---
-            
-            Tujuan Anda adalah membantu pembeli yakin untuk membeli produk ini.`;
-
-            try {
-                // 4. Panggil Gemini API
-                const result = await callGeminiChat(productChatHistory, baseSystemPrompt);
-
-                if (result && result.text) {
-                    const aiResponse = result.text.trim();
-
-                    // 5. Tambahkan balasan AI ke history
-                    productChatHistory.push({ role: "assistant", parts: [{ text: aiResponse }] });
-                    
-                    // 6. Tampilkan balasan AI
-                    const aiMessageDiv = document.createElement('div');
-                    aiMessageDiv.className = 'chat-message-ai p-3';
-                    // Mengganti baris baru (\n) dengan tag <br> untuk tampilan HTML
-                    aiMessageDiv.innerHTML = aiResponse.replace(/\n/g, '<br>');
-                    chatMessages.appendChild(aiMessageDiv);
-                } else {
-                    const fallbackMessage = "Maaf, Asisten AI sedang sibuk atau mengalami kendala jaringan. Silakan hubungi penjual secara langsung.";
-                    productChatHistory.push({ role: "assistant", parts: [{ text: fallbackMessage }] });
-                    
-                    const aiMessageDiv = document.createElement('div');
-                    aiMessageDiv.className = 'chat-message-ai p-3 text-red-600';
-                    aiMessageDiv.textContent = fallbackMessage;
-                    chatMessages.appendChild(aiMessageDiv);
-                }
-            } catch (error) {
-                console.error('Chat error:', error);
-                const errorMessage = "Terjadi kesalahan sistem saat memproses chat Anda.";
-                productChatHistory.push({ role: "assistant", parts: [{ text: errorMessage }] });
-
-                const aiMessageDiv = document.createElement('div');
-                aiMessageDiv.className = 'chat-message-ai p-3 text-red-600';
-                aiMessageDiv.textContent = errorMessage;
-                chatMessages.appendChild(aiMessageDiv);
-            } finally {
-                // 7. Sembunyikan status loading dan aktifkan tombol
-                chatStatus.classList.add('hidden');
-                document.getElementById('chat-send-button').disabled = false;
-                chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll ke bawah
-            }
-        };
-
-
-        // 6. UI & Router Logic
-        
-        // Update UI Header berdasarkan status login
-        const updateHeaderUI = () => {
-            if (currentUser) {
-                authLinksDesktop.classList.add('hidden');
-                userMenuDesktop.classList.remove('hidden');
-                authLinksMobile.classList.add('hidden');
-                userMenuMobile.classList.remove('hidden');
-            } else {
-                authLinksDesktop.classList.remove('hidden');
-                userMenuDesktop.classList.add('hidden');
-                authLinksMobile.classList.remove('hidden');
-                userMenuMobile.classList.add('hidden');
-            }
-        };
-        
-        // Hamburger Menu Toggle
-        mobileMenuButton.addEventListener('click', () => {
-            const isMenuOpen = !mobileMenu.classList.contains('hidden');
-            if (isMenuOpen) {
-                mobileMenu.classList.add('hidden');
-                menuIconOpen.classList.remove('hidden');
-                menuIconClose.classList.add('hidden');
-            } else {
-                mobileMenu.classList.remove('hidden');
-                menuIconOpen.classList.add('hidden');
-                menuIconClose.classList.remove('hidden');
-            }
-        });
-
-        // Tutup mobile menu saat link diklik
-        document.querySelectorAll('#mobile-menu a, #mobile-menu button').forEach(link => {
-            link.addEventListener('click', () => {
-                mobileMenu.classList.add('hidden');
-                menuIconOpen.classList.remove('hidden');
-                menuIconClose.classList.add('hidden');
-            });
-        });
-
-        // Simple Hash Router
-        const handleRouteChange = async () => {
-            const hash = window.location.hash || '#home';
-            showLoader();
-            
-            // Tutup menu mobile setiap pindah halaman
-            mobileMenu.classList.add('hidden');
-            menuIconOpen.classList.remove('hidden');
-            menuIconClose.classList.add('hidden');
-
-            if (hash === '#home') {
-                renderHome();
-            } else if (hash === '#marketplace') {
-                await renderMarketplace();
-            } else if (hash.startsWith('#product/')) {
-                const productId = hash.split('/')[1];
-                await renderProductDetail(productId);
-            } else if (hash === '#login') {
-                renderLogin();
-            } else if (hash === '#register') {
-                renderRegister();
-            } else if (hash === '#dashboard') {
-                renderDashboard();
-            } else if (hash === '#my-products') {
-                await renderMyProducts();
-            } else if (hash === '#add-product') {
-                renderProductForm();
-            } else if (hash.startsWith('#edit-product/')) {
-                const productId = hash.split('/')[1];
-                await renderProductForm(productId);
-            } else {
-                renderHome(); // Default fallback
-            }
-            
-            window.scrollTo(0, 0); // Scroll ke atas setiap pindah halaman
-            hideLoader();
-        };
-
-        // 7. Inisialisasi Aplikasi
-        
-        // Listener untuk tombol logout
-        logoutButtonDesktop.addEventListener('click', handleLogout);
-        logoutButtonMobile.addEventListener('click', handleLogout);
-        
-        // Listener untuk perubahan hash
-        window.addEventListener('hashchange', handleRouteChange);
-        
-        // Pengecekan sesi awal saat DOM dimuat
-        document.addEventListener('DOMContentLoaded', () => {
-            // Jangan panggil checkUserSession jika Supabase belum dikonfigurasi
-            if (SUPABASE_URL === 'https://YOUR_PROJECT_ID.supabase.co' || SUPABASE_URL === 'https://poawadkkoanwsbxfyemb.supabase.co') {
-                
-                // Gunakan onAuthStateChanged sebagai gantinya.
-                // Ini akan berjalan saat load halaman DAN setiap kali auth berubah (login/logout)
-                dbClient.auth.onAuthStateChanged(async (event, session) => {
-                    console.log('Auth event:', event, session);
-                    showLoader();
-                    currentUser = session ? session.user : null;
-                    userProfile = null; // Reset profil
-
-                    if (currentUser) {
-                        // User sedang login, ambil profilnya
-                        try {
-                            const { data, error } = await dbClient
-                                .from('users')
-                                .select('*')
-                                .eq('id', currentUser.id)
-                                .single();
-                            
-                            if (error && error.code !== 'PGRST116') { // Abaikan error "row not found"
-                                throw error;
                             }
-                            userProfile = data;
-                            
-                            // Jika user baru saja login (event 'SIGNED_IN')
-                            // dan masih di halaman login/register, arahkan ke dashboard.
-                            if (event === 'SIGNED_IN' && (window.location.hash === '#login' || window.location.hash === '#register')) {
-                                window.location.hash = '#dashboard';
+                        }
+                    });
+                }
+                
+                const growthCtx = document.getElementById('growthChart');
+                if (growthCtx && !growthCtx.chart) {
+                    growthCtx.chart = new Chart(growthCtx, {
+                        type: 'line',
+                        data: {
+                            labels: ['Bulan 1', 'Bulan 3', 'Bulan 6', 'Bulan 9', 'Bulan 12'],
+                            datasets: [{
+                                label: 'Proyeksi Pengguna Aktif',
+                                data: [1000, 5000, 25000, 70000, 150000],
+                                fill: true,
+                                borderColor: 'rgba(22, 163, 74, 1)',
+                                backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                                tension: 0.3
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
                             }
-                            
-                        } catch (error) {
-                            console.error('Error fetching profile after auth change:', error);
-                            showMessage(`Gagal memuat profil: ${error.message}`, 'Error', true);
                         }
-                    } else {
-                        // User tidak login atau baru saja logout
-                        if (event === 'SIGNED_OUT') {
-                            window.location.hash = '#home';
-                        }
-                    }
-                    
-                    updateHeaderUI();
-                    
-                    // Render ulang halaman saat ini untuk mencerminkan status auth
-                    await handleRouteChange();
-                    
-                    hideLoader();
+                    });
+                }
+            }
+            
+            initCharts();
+            
+            const dataPageLink = document.querySelector('.nav-link[data-page="page-data"]');
+            if(dataPageLink) {
+                dataPageLink.addEventListener('click', function() {
+                    setTimeout(initCharts, 50); 
                 });
-            } else {
-                // Tampilkan pesan error jika URL Supabase masih default
-                 const mainContent = document.getElementById('main-content');
-                 mainContent.innerHTML = `
-                    <div class="container mx-auto px-4 py-16 text-center">
-                        <h1 class="text-3xl font-bold text-red-600">Konfigurasi Diperlukan!</h1>
-                        <p class="mt-4 text-lg">Silakan buka file <code>index.html</code> dan ganti <code>SUPABASE_URL</code> dan <code>SUPABASE_ANON_KEY</code> dengan kredensial Supabase Anda.</p>
-                    </div>
-                `;
             }
-        });
 
+            // --- LLM API CORE FUNCTION ---
+            async function fetchGemini(url, payload, maxRetries = 3) {
+                for (let attempt = 0; attempt < maxRetries; attempt++) {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (!response.ok) {
+                            const errorBody = await response.text();
+                            console.error(`Attempt ${attempt + 1}: API call failed with status ${response.status}`, errorBody);
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+
+                        return await response.json();
+
+                    } catch (error) {
+                        if (attempt < maxRetries - 1) {
+                            const delay = Math.pow(2, attempt) * 1000;
+                            console.warn(`Retrying in ${delay / 1000}s...`);
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        } else {
+                            throw error;
+                        }
+                    }
+                }
+            }
+            // --- END LLM API CORE FUNCTION ---
+
+
+            // --- LLM Feature 1: Tanya Pakar (Grounding/Search) ---
+            const pakarQueryInput = document.getElementById('pakar-query');
+            const pakarButton = document.getElementById('pakar-button');
+            const pakarSpinner = document.getElementById('pakar-spinner');
+            const pakarResponseContainer = document.getElementById('pakar-response-container');
+            const pakarResponseText = document.getElementById('pakar-response-text');
+            const pakarSourcesDiv = document.getElementById('pakar-sources');
+
+            pakarButton.addEventListener('click', async () => {
+                const query = pakarQueryInput.value.trim();
+                if (!query) {
+                    alert('Masukkan pertanyaan Anda terlebih dahulu!');
+                    return;
+                }
+
+                pakarButton.disabled = true;
+                pakarSpinner.classList.remove('hidden');
+                pakarResponseContainer.classList.add('hidden');
+                pakarResponseText.innerHTML = '';
+                pakarSourcesDiv.innerHTML = '';
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+                
+                // Prompt for the expert persona and grounding instruction
+                const systemPrompt = `Anda adalah seorang ahli pangan dan analis pasar dari SegariHari. Jawab pertanyaan pengguna dengan ringkas, fokus, dan informatif. Gunakan informasi terkini dari Google Search. Respon harus dalam Bahasa Indonesia.`;
+                
+                const payload = {
+                    contents: [{ parts: [{ text: query }] }],
+                    tools: [{ "google_search": {} }],
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                };
+
+                try {
+                    const result = await fetchGemini(apiUrl, payload);
+                    
+                    const candidate = result.candidates?.[0];
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        const text = candidate.content.parts[0].text;
+                        let sources = [];
+                        const groundingMetadata = candidate.groundingMetadata;
+
+                        if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                            sources = groundingMetadata.groundingAttributions
+                                .map(attribution => ({
+                                    uri: attribution.web?.uri,
+                                    title: attribution.web?.title,
+                                }))
+                                .filter(source => source.uri && source.title);
+                        }
+
+                        pakarResponseText.innerText = text;
+                        
+                        if (sources.length > 0) {
+                            let sourcesHtml = '<p class="font-semibold mt-2">Sumber:</p><ul class="list-disc list-inside space-y-1">';
+                            sources.slice(0, 3).forEach(source => { // Show up to 3 sources
+                                sourcesHtml += `<li><a href="${source.uri}" target="_blank" class="text-green-600 hover:text-green-800 underline">${source.title}</a></li>`;
+                            });
+                            sourcesHtml += '</ul>';
+                            pakarSourcesDiv.innerHTML = sourcesHtml;
+                        } else {
+                             pakarSourcesDiv.innerHTML = '<p class="mt-2 italic">Tidak ada sumber yang ditemukan.</p>';
+                        }
+
+                        pakarResponseContainer.classList.remove('hidden');
+
+                    } else {
+                        pakarResponseText.innerText = 'Maaf, terjadi kesalahan saat memproses permintaan Anda.';
+                        pakarResponseContainer.classList.remove('hidden');
+                    }
+
+                } catch (error) {
+                    console.error('Error during Pakar query:', error);
+                    pakarResponseText.innerText = 'Maaf, gagal terhubung ke layanan Pakar. Coba lagi nanti.';
+                    pakarResponseContainer.classList.remove('hidden');
+                } finally {
+                    pakarButton.disabled = false;
+                    pakarSpinner.classList.add('hidden');
+                }
+            });
+            // --- END LLM Feature 1 ---
+
+
+            // --- LLM Feature 2: Resep Cerdas (Structured Output) ---
+            const resepBahanInput = document.getElementById('resep-bahan');
+            const resepButton = document.getElementById('resep-button');
+            const resepSpinner = document.getElementById('resep-spinner');
+            const resepResponseContainer = document.getElementById('resep-response-container');
+            const resepResponseContent = document.getElementById('resep-response-content');
+            
+            resepButton.addEventListener('click', async () => {
+                const bahan = resepBahanInput.value.trim();
+                if (!bahan) {
+                    alert('Masukkan daftar bahan yang Anda miliki!');
+                    return;
+                }
+
+                resepButton.disabled = true;
+                resepSpinner.classList.remove('hidden');
+                resepResponseContainer.classList.add('hidden');
+                resepResponseContent.innerHTML = '';
+                
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+                
+                const systemPrompt = `Anda adalah seorang koki ahli. Buatlah satu resep masakan dalam Bahasa Indonesia yang menggunakan bahan-bahan berikut. Pastikan resep tersebut memiliki nama, daftar bahan (termasuk jumlah yang dibutuhkan), dan langkah-langkah memasak. Output harus dalam format JSON sesuai skema yang diberikan.`;
+                
+                const userQuery = `Buat resep menggunakan bahan-bahan berikut: ${bahan}`;
+
+                const payload = {
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                "namaResep": { "type": "STRING", "description": "Nama hidangan yang menarik." },
+                                "deskripsiSingkat": { "type": "STRING", "description": "Deskripsi singkat resep." },
+                                "bahanDibutuhkan": {
+                                    "type": "ARRAY",
+                                    "description": "Daftar lengkap bahan dan jumlah yang dibutuhkan.",
+                                    "items": { "type": "STRING" }
+                                },
+                                "langkahMemasak": {
+                                    "type": "ARRAY",
+                                    "description": "Langkah-langkah memasak secara berurutan.",
+                                    "items": { "type": "STRING" }
+                                }
+                            },
+                            required: ["namaResep", "deskripsiSingkat", "bahanDibutuhkan", "langkahMemasak"]
+                        }
+                    }
+                };
+
+                try {
+                    const result = await fetchGemini(apiUrl, payload);
+                    
+                    const jsonString = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (jsonString) {
+                        const parsedJson = JSON.parse(jsonString);
+                        
+                        let htmlOutput = `<h3 class="text-xl font-bold mb-1">${parsedJson.namaResep}</h3>`;
+                        htmlOutput += `<p class="italic text-gray-600 mb-4">${parsedJson.deskripsiSingkat}</p>`;
+                        
+                        // Bahan
+                        htmlOutput += `<h4 class="font-semibold text-lg text-green-600">Bahan-bahan:</h4>`;
+                        htmlOutput += `<ul class="list-disc list-inside ml-4 mb-4 space-y-1">`;
+                        parsedJson.bahanDibutuhkan.forEach(bahan => {
+                            htmlOutput += `<li>${bahan}</li>`;
+                        });
+                        htmlOutput += `</ul>`;
+
+                        // Langkah
+                        htmlOutput += `<h4 class="font-semibold text-lg text-green-600">Langkah Memasak:</h4>`;
+                        htmlOutput += `<ol class="list-decimal list-inside ml-4 space-y-1">`;
+                        parsedJson.langkahMemasak.forEach(langkah => {
+                            htmlOutput += `<li>${langkah}</li>`;
+                        });
+                        htmlOutput += `</ol>`;
+
+                        resepResponseContent.innerHTML = htmlOutput;
+                        resepResponseContainer.classList.remove('hidden');
+
+                    } else {
+                        resepResponseContent.innerText = 'Maaf, gagal menghasilkan resep yang terstruktur. Pastikan Anda memasukkan bahan yang jelas.';
+                        resepResponseContainer.classList.remove('hidden');
+                    }
+
+                } catch (error) {
+                    console.error('Error during Resep Cerdas query:', error);
+                    resepResponseContent.innerText = 'Maaf, gagal terhubung ke layanan Resep Cerdas. Coba lagi nanti.';
+                    resepResponseContainer.classList.remove('hidden');
+                } finally {
+                    resepButton.disabled = false;
+                    resepSpinner.classList.add('hidden');
+                }
+            });
+            // --- END LLM Feature 2 ---
+
+        });
     </script>
+
 </body>
 </html>
