@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 
 const promoProducts = [
@@ -12,7 +13,7 @@ const promoProducts = [
     price: 14000,
     originalPrice: 20000,
     discount: "Diskon 30%",
-    image: "https://placehold.co/400x300/A0E9A0/333?text=Brokoli+Segar",
+    image: "/images/brokoli.png",
   },
   {
     id: 2,
@@ -21,7 +22,7 @@ const promoProducts = [
     price: 48000,
     originalPrice: 60000,
     discount: "Diskon 20%",
-    image: "https://placehold.co/400x300/FAD0C4/333?text=Daging+Sapi",
+    image: "/images/daging-sapi.png",
   },
   {
     id: 3,
@@ -30,7 +31,7 @@ const promoProducts = [
     price: 30000,
     originalPrice: null,
     discount: "Beli 1 Gratis 1",
-    image: "https://placehold.co/400x300/FFF8B8/333?text=Telur+Ayam",
+    image: "/images/telur-ayam.png",
   },
   {
     id: 4,
@@ -39,7 +40,7 @@ const promoProducts = [
     price: 24000,
     originalPrice: 40000,
     discount: "Diskon 40%",
-    image: "https://placehold.co/400x300/FFDDC1/333?text=Jeruk+Sunkist",
+    image: "/images/jeruk-sunkist.png",
   },
 ];
 
@@ -194,7 +195,9 @@ export default function HomePage() {
               transition={{ duration: 0.4, delay: index * 0.1 }}
               className="bg-white rounded-lg shadow-lg overflow-hidden transform transition duration-300 hover:scale-105 hover:shadow-xl"
             >
-              <img src={product.image} alt={product.name} className="w-full h-48 object-cover" />
+              <div className="relative w-full h-48">
+                <Image src={product.image} alt={product.name} fill className="object-cover" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw" />
+              </div>
               <div className="p-4">
                 <span className="inline-block bg-red-200 text-red-800 text-xs px-2 py-1 rounded-full uppercase font-semibold tracking-wide">
                   {product.discount}

@@ -1,22 +1,23 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
 const allProducts = [
-    { id: "1", name: "Brokoli Organik", unit: "500 gr / ikat", price: 14000, originalPrice: 20000, discount: "Diskon 30%", category: "Sayuran", image: "https://placehold.co/400x300/A0E9A0/333?text=Brokoli" },
-    { id: "2", name: "Daging Sapi Has Dalam", unit: "250 gr / pack", price: 48000, originalPrice: 60000, discount: "Diskon 20%", category: "Daging & Unggas", image: "https://placehold.co/400x300/FAD0C4/333?text=Daging+Sapi" },
-    { id: "3", name: "Telur Ayam Omega-3", unit: "10 butir / pack", price: 30000, originalPrice: null, discount: "Beli 1 Gratis 1", category: "Susu & Telur", image: "https://placehold.co/400x300/FFF8B8/333?text=Telur+Ayam" },
-    { id: "4", name: "Jeruk Sunkist Navel", unit: "1 kg", price: 24000, originalPrice: 40000, discount: "Diskon 40%", category: "Buah-buahan", image: "https://placehold.co/400x300/FFDDC1/333?text=Jeruk+Sunkist" },
-    { id: "5", name: "Bayam Segar", unit: "250 gr / ikat", price: 5000, originalPrice: null, discount: null, category: "Sayuran", image: "https://placehold.co/400x300/A0E9A0/333?text=Bayam+Segar" },
-    { id: "6", name: "Ayam Kampung", unit: "1 ekor", price: 85000, originalPrice: 95000, discount: "Diskon 10%", category: "Daging & Unggas", image: "https://placehold.co/400x300/FAD0C4/333?text=Ayam+Kampung" },
-    { id: "7", name: "Susu Segar", unit: "1 liter", price: 18000, originalPrice: null, discount: null, category: "Susu & Telur", image: "https://placehold.co/400x300/FFF8B8/333?text=Susu+Segar" },
-    { id: "8", name: "Ikan Salmon", unit: "200 gr / fillet", price: 65000, originalPrice: 75000, discount: "Diskon 13%", category: "Ikan & Seafood", image: "https://placehold.co/400x300/B0E0E6/333?text=Ikan+Salmon" },
-    { id: "9", name: "Wortel Import", unit: "500 gr", price: 12000, originalPrice: null, discount: null, category: "Sayuran", image: "https://placehold.co/400x300/FFA07A/333?text=Wortel" },
-    { id: "10", name: "Roti Tawar", unit: "1 bungkus", price: 15000, originalPrice: null, discount: null, category: "Kebutuhan Dapur", image: "https://placehold.co/400x300/F5DEB3/333?text=Roti+Tawar" },
-    { id: "11", name: "Udang Segar", unit: "500 gr", price: 55000, originalPrice: 65000, discount: "Diskon 15%", category: "Ikan & Seafood", image: "https://placehold.co/400x300/B0E0E6/333?text=Udang+Segar" },
-    { id: "12", name: "Apel Fuji", unit: "1 kg", price: 35000, originalPrice: 42000, discount: "Diskon 17%", category: "Buah-buahan", image: "https://placehold.co/400x300/FFB6C1/333?text=Apel+Fuji" },
+    { id: "1", name: "Brokoli Organik", unit: "500 gr / ikat", price: 14000, originalPrice: 20000, discount: "Diskon 30%", category: "Sayuran", image: "/images/brokoli.png" },
+    { id: "2", name: "Daging Sapi Has Dalam", unit: "250 gr / pack", price: 48000, originalPrice: 60000, discount: "Diskon 20%", category: "Daging & Unggas", image: "/images/daging-sapi.png" },
+    { id: "3", name: "Telur Ayam Omega-3", unit: "10 butir / pack", price: 30000, originalPrice: null, discount: "Beli 1 Gratis 1", category: "Susu & Telur", image: "/images/telur-ayam.png" },
+    { id: "4", name: "Jeruk Sunkist Navel", unit: "1 kg", price: 24000, originalPrice: 40000, discount: "Diskon 40%", category: "Buah-buahan", image: "/images/jeruk-sunkist.png" },
+    { id: "5", name: "Bayam Segar", unit: "250 gr / ikat", price: 5000, originalPrice: null, discount: null, category: "Sayuran", image: "/images/bayam.png" },
+    { id: "6", name: "Ayam Kampung", unit: "1 ekor", price: 85000, originalPrice: 95000, discount: "Diskon 10%", category: "Daging & Unggas", image: "/images/ayam-kampung.png" },
+    { id: "7", name: "Susu Segar", unit: "1 liter", price: 18000, originalPrice: null, discount: null, category: "Susu & Telur", image: "/images/susu-segar.png" },
+    { id: "8", name: "Ikan Salmon", unit: "200 gr / fillet", price: 65000, originalPrice: 75000, discount: "Diskon 13%", category: "Ikan & Seafood", image: "/images/ikan-salmon.png" },
+    { id: "9", name: "Wortel Import", unit: "500 gr", price: 12000, originalPrice: null, discount: null, category: "Sayuran", image: "/images/wortel.png" },
+    { id: "10", name: "Roti Tawar", unit: "1 bungkus", price: 15000, originalPrice: null, discount: null, category: "Kebutuhan Dapur", image: "/images/roti-tawar.png" },
+    { id: "11", name: "Udang Segar", unit: "500 gr", price: 55000, originalPrice: 65000, discount: "Diskon 15%", category: "Ikan & Seafood", image: "/images/udang.png" },
+    { id: "12", name: "Apel Fuji", unit: "1 kg", price: 35000, originalPrice: 42000, discount: "Diskon 17%", category: "Buah-buahan", image: "/images/apel-fuji.png" },
 ];
 
 const cats = ["Semua", "Sayuran", "Buah-buahan", "Daging & Unggas", "Ikan & Seafood", "Susu & Telur", "Kebutuhan Dapur"];
@@ -96,8 +97,14 @@ export default function ShopPage() {
                             transition={{ duration: 0.3, delay: index * 0.05 }}
                             className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 group"
                         >
-                            <div className="relative overflow-hidden">
-                                <img src={product.image} alt={product.name} className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" />
+                            <div className="relative w-full h-48 overflow-hidden">
+                                <Image
+                                    src={product.image}
+                                    alt={product.name}
+                                    fill
+                                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                                />
                                 {product.discount && (
                                     <span className="absolute top-3 left-3 bg-red-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
                                         {product.discount}

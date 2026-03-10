@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 
 export default function TentangPage() {
@@ -11,11 +12,21 @@ export default function TentangPage() {
                 transition={{ duration: 0.5 }}
                 className="bg-white rounded-2xl shadow-xl overflow-hidden"
             >
-                <img
-                    src="https://placehold.co/1200x400/C8E6C9/333?text=Tim+Petani+Lokal+Kami"
-                    className="w-full h-64 object-cover"
-                    alt="Petani Lokal"
-                />
+                <div className="relative w-full h-64 md:h-80">
+                    <Image
+                        src="/images/petani-lokal.png"
+                        fill
+                        className="object-cover"
+                        alt="Tim Petani Lokal Kami"
+                        sizes="100vw"
+                        priority
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                    <div className="absolute bottom-6 left-8 text-white">
+                        <h2 className="text-2xl md:text-3xl font-bold drop-shadow-lg">Tim Petani Lokal Kami</h2>
+                        <p className="text-sm md:text-base text-white/90 drop-shadow">Bersama membangun masa depan pertanian Indonesia</p>
+                    </div>
+                </div>
                 <div className="p-8 md:p-12">
                     <h1 className="text-4xl font-bold text-gray-800 mb-4">
                         👩‍🌾 Misi Kami: Dari Ladang Lokal ke Meja Anda

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
 const features = [
@@ -15,7 +16,7 @@ const features = [
             "Saran produk pelengkap secara cerdas.",
             "Satu klik untuk menambahkan semua item yang diprediksi ke keranjang.",
         ],
-        image: "https://placehold.co/600x300/E0F2E9/333?text=Visualisasi+Smart+List",
+        image: "/images/fitur-smart-list.png",
     },
     {
         id: "tab-langganan",
@@ -28,7 +29,7 @@ const features = [
             "Fleksibel: lewati pengiriman atau ubah item kapan saja.",
             "Prioritas stok untuk barang langganan Anda.",
         ],
-        image: "https://placehold.co/600x300/E0E7FF/333?text=Visualisasi+Langganan",
+        image: "/images/fitur-langganan.png",
     },
     {
         id: "tab-resep",
@@ -41,7 +42,7 @@ const features = [
             "Penyesuaian porsi otomatis (misal: untuk 2 atau 4 orang).",
             'Dari "cari resep" ke "checkout" dalam kurang dari 1 menit.',
         ],
-        image: "https://placehold.co/600x300/FEF3C7/333?text=Visualisasi+Resep",
+        image: "/images/fitur-resep.png",
         hasAI: true,
     },
 ];
@@ -188,11 +189,15 @@ export default function FiturPage() {
                                 ))}
                             </ul>
 
-                            <img
-                                src={activeFeature.image}
-                                alt={activeFeature.title}
-                                className="w-full h-auto rounded-lg mt-6 object-cover"
-                            />
+                            <div className="relative w-full h-64 md:h-80 mt-6 rounded-lg overflow-hidden">
+                                <Image
+                                    src={activeFeature.image}
+                                    alt={activeFeature.title}
+                                    fill
+                                    className="object-cover rounded-lg"
+                                    sizes="(max-width: 768px) 100vw, 66vw"
+                                />
+                            </div>
                         </motion.div>
                     </AnimatePresence>
                 </div>
