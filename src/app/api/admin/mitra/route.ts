@@ -23,6 +23,8 @@ export async function GET() {
                 nomorKTP: true,
                 alamatUmkm: true,
                 deskripsiUsaha: true,
+                fotoKTP: true,
+                fotoLapak: true,
                 mitraStatus: true,
                 isMitra: true,
                 createdAt: true,

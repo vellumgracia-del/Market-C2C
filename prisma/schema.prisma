@@ -19,6 +19,8 @@ model User {
   nomorKTP    String?
   alamatUmkm  String?
   deskripsiUsaha String?
+  fotoKTP     String?
+  fotoLapak   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

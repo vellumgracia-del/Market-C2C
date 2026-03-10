@@ -48,3 +48,6 @@ next-env.d.ts
 
 # backup
 *.bak
+
+# uploads (user-submitted photos)
+/public/uploads/

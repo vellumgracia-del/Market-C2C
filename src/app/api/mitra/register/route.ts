@@ -8,6 +8,8 @@ const mitraSchema = z.object({
     nomorKTP: z.string().min(16, "Nomor KTP harus 16 digit").max(16, "Nomor KTP harus 16 digit"),
     alamatUmkm: z.string().min(10, "Alamat minimal 10 karakter"),
     deskripsiUsaha: z.string().min(20, "Deskripsi usaha minimal 20 karakter"),
+    fotoKTP: z.string().min(1, "Foto KTP wajib diunggah"),
+    fotoLapak: z.string().min(1, "Foto lapak usaha wajib diunggah"),
 });
 
 export async function POST(request: Request) {
@@ -45,6 +47,8 @@ export async function POST(request: Request) {
                 nomorKTP: data.nomorKTP,
                 alamatUmkm: data.alamatUmkm,
                 deskripsiUsaha: data.deskripsiUsaha,
+                fotoKTP: data.fotoKTP,
+                fotoLapak: data.fotoLapak,
                 mitraStatus: "PENDING",
             },
         });

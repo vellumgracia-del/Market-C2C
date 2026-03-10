@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 
 interface MitraApplication {
@@ -11,6 +12,8 @@ interface MitraApplication {
     nomorKTP: string | null;
     alamatUmkm: string | null;
     deskripsiUsaha: string | null;
+    fotoKTP: string | null;
+    fotoLapak: string | null;
     mitraStatus: string;
     isMitra: boolean;
     createdAt: string;
@@ -182,6 +185,31 @@ export default function AdminMitraPage() {
                                             <div className="mt-2 text-sm">
                                                 <span className="text-gray-500 font-medium">Deskripsi Usaha:</span>
                                                 <p className="text-gray-700 mt-1">{app.deskripsiUsaha}</p>
+                                            </div>
+                                        )}
+
+                                        {/* Photo Verification */}
+                                        {(app.fotoKTP || app.fotoLapak) && (
+                                            <div className="mt-4">
+                                                <span className="text-gray-500 font-medium text-sm">📷 Dokumen Verifikasi:</span>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                                                    {app.fotoKTP && (
+                                                        <div className="border rounded-lg overflow-hidden">
+                                                            <p className="text-xs font-medium text-gray-500 px-2 py-1 bg-gray-50">🪪 Foto KTP</p>
+                                                            <a href={app.fotoKTP} target="_blank" rel="noopener noreferrer">
+                                                                <Image src={app.fotoKTP} alt="Foto KTP" width={300} height={200} className="w-full h-40 object-cover hover:opacity-90 transition" />
+                                                            </a>
+                                                        </div>
+                                                    )}
+                                                    {app.fotoLapak && (
+                                                        <div className="border rounded-lg overflow-hidden">
+                                                            <p className="text-xs font-medium text-gray-500 px-2 py-1 bg-gray-50">🏪 Foto Lapak</p>
+                                                            <a href={app.fotoLapak} target="_blank" rel="noopener noreferrer">
+                                                                <Image src={app.fotoLapak} alt="Foto Lapak" width={300} height={200} className="w-full h-40 object-cover hover:opacity-90 transition" />
+                                                            </a>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
