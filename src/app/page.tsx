@@ -221,16 +221,17 @@ export default function HomePage() {
         <h2 className="text-3xl font-bold text-gray-800 mb-6">Jelajahi Kategori</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {categories.map((cat, index) => (
-            <motion.div
-              key={cat.name}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3, delay: index * 0.05 }}
-              className={`bg-gradient-to-br ${cat.gradient} p-6 rounded-lg text-center shadow-sm hover:shadow-lg transition duration-300 cursor-pointer`}
-            >
-              <div className="text-4xl mb-2">{cat.emoji}</div>
-              <span className={`font-semibold ${cat.text}`}>{cat.name}</span>
-            </motion.div>
+            <Link href={`/shop?category=${encodeURIComponent(cat.name)}`} key={cat.name}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+                className={`bg-gradient-to-br ${cat.gradient} p-6 rounded-lg text-center shadow-sm hover:shadow-lg transition duration-300 cursor-pointer h-full`}
+              >
+                <div className="text-4xl mb-2">{cat.emoji}</div>
+                <span className={`font-semibold ${cat.text}`}>{cat.name}</span>
+              </motion.div>
+            </Link>
           ))}
         </div>
       </section>

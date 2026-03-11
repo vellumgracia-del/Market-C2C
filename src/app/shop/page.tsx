@@ -3,7 +3,8 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 const allProducts = [
     { id: "1", name: "Brokoli Organik", unit: "500 gr / ikat", price: 14000, originalPrice: 20000, discount: "Diskon 30%", category: "Sayuran", image: "/images/brokoli.png" },
@@ -27,9 +28,28 @@ function formatRupiah(num: number) {
 }
 
 export default function ShopPage() {
-    const [category, setCategory] = useState("Semua");
+    return (
+        <Suspense fallback={<div className="container mx-auto px-4 py-16 text-center">Memuat produk...</div>}>
+            <ShopContent />
+        </Suspense>
+    );
+}
+
+function ShopContent() {
+    const searchParams = useSearchParams();
+    const initialCategory = searchParams.get("category") || "Semua";
+
+    const [category, setCategory] = useState(initialCategory);
     const [search, setSearch] = useState("");
     const [cart, setCart] = useState<{ [key: string]: number }>({});
+
+    // Reset category to the URL param if it changes
+    useEffect(() => {
+        const cat = searchParams.get("category");
+        if (cat) {
+            setCategory(cat);
+        }
+    }, [searchParams]);
 
     const filtered = allProducts.filter((p) => {
         const matchCat = category === "Semua" || p.category === category;

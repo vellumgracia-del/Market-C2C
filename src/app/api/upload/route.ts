@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { storage } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export async function POST(request: Request) {
     try {
@@ -33,26 +33,26 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Ukuran file maksimal 5MB" }, { status: 400 });
         }
 
-        // Create upload directory
-        const uploadDir = path.join(process.cwd(), "public", "uploads", "mitra", session.user.id);
-        await mkdir(uploadDir, { recursive: true });
-
         // Generate filename
         const ext = file.name.split(".").pop() || "jpg";
         const fileName = `${type}-${Date.now()}.${ext}`;
-        const filePath = path.join(uploadDir, fileName);
+        const filePath = `uploads/mitra/${session.user.id}/${fileName}`;
 
-        // Write file
+        // Upload to Firebase Storage
+        const fileRef = ref(storage, filePath);
         const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        await writeFile(filePath, buffer);
+        const buffer = new Uint8Array(bytes);
 
-        // Return the public URL path
-        const publicPath = `/uploads/mitra/${session.user.id}/${fileName}`;
+        await uploadBytes(fileRef, buffer, {
+            contentType: file.type,
+        });
 
-        return NextResponse.json({ path: publicPath, message: "Upload berhasil" });
+        // Get the public download URL from Firebase
+        const downloadUrl = await getDownloadURL(fileRef);
+
+        return NextResponse.json({ path: downloadUrl, message: "Upload berhasil" });
     } catch (error) {
         console.error("Upload error:", error);
-        return NextResponse.json({ error: "Gagal mengupload file" }, { status: 500 });
+        return NextResponse.json({ error: "Gagal mengupload file ke Firebase" }, { status: 500 });
     }
 }
