@@ -1,10 +1,13 @@
-import { auth } from "@/lib/auth";
+import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default auth((req) => {
+export async function middleware(req: NextRequest) {
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     const { pathname } = req.nextUrl;
-    const isLoggedIn = !!req.auth;
-    const isMitra = req.auth?.user?.isMitra;
+
+    const isLoggedIn = !!token;
+    const isMitra = token?.isMitra === true;
 
     // Protect seller dashboard
     if (pathname.startsWith("/seller")) {
@@ -34,7 +37,7 @@ export default auth((req) => {
     }
 
     return NextResponse.next();
-});
+}
 
 export const config = {
     matcher: ["/seller/:path*", "/menjadi-mitra", "/shop/checkout", "/shop/orders"],
