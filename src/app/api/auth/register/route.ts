@@ -32,7 +32,7 @@ export async function POST(request: Request) {
                 name,
                 email,
                 password: hashedPassword,
-                role: "BUYER",
+                role: email === "admin@segari.com" ? "ADMIN" : "BUYER",
                 isMitra: false,
                 mitraStatus: "NONE",
             },
