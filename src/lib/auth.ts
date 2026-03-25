@@ -18,30 +18,36 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     return null;
                 }
 
-                const user = await prisma.user.findUnique({
-                    where: { email: credentials.email as string },
-                });
+                try {
+                    const user = await prisma.user.findUnique({
+                        where: { email: credentials.email as string },
+                    });
 
-                if (!user) return null;
+                    if (!user) return null;
 
-                const isPasswordValid = await bcrypt.compare(
-                    credentials.password as string,
-                    user.password
-                );
+                    const isPasswordValid = await bcrypt.compare(
+                        credentials.password as string,
+                        user.password
+                    );
 
-                if (!isPasswordValid) return null;
+                    if (!isPasswordValid) return null;
 
-                return {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    role: user.role,
-                    isMitra: user.isMitra,
-                    mitraStatus: user.mitraStatus,
-                };
+                    return {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        role: user.role,
+                        isMitra: user.isMitra,
+                        mitraStatus: user.mitraStatus,
+                    };
+                } catch (error) {
+                    console.error("NextAuth Authorize Error:", error);
+                    return null; // This will trigger the standard UI invalid credentials error, not a 500
+                }
             },
         }),
     ],
+    debug: true,
     callbacks: {
         async jwt({ token, user, trigger, session }) {
             if (user) {
